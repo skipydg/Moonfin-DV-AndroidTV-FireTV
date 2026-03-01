@@ -60,6 +60,7 @@ import org.jellyfin.androidtv.ui.settings.compat.SettingsViewModel
 import org.jellyfin.androidtv.ui.startup.ServerAddViewModel
 import org.jellyfin.androidtv.ui.startup.StartupViewModel
 import org.jellyfin.androidtv.ui.startup.UserLoginViewModel
+import org.jellyfin.androidtv.util.EmbyCompatInterceptor
 import org.jellyfin.androidtv.util.KeyProcessor
 import org.jellyfin.androidtv.util.MarkdownRenderer
 import org.jellyfin.androidtv.util.PlaybackHelper
@@ -83,7 +84,14 @@ val defaultDeviceInfo = named("defaultDeviceInfo")
 val appModule = module {
 	// SDK
 	single(defaultDeviceInfo) { androidDevice(get()) }
-	single { OkHttpFactory() }
+	single { EmbyCompatInterceptor() }
+	single {
+		val interceptor = get<EmbyCompatInterceptor>()
+		val base = okhttp3.OkHttpClient.Builder()
+			.addInterceptor(interceptor)
+			.build()
+		OkHttpFactory(base)
+	}
 	single { HttpClientOptions() }
 	single {
 		createJellyfin {

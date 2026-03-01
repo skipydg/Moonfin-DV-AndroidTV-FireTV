@@ -16,6 +16,7 @@ import org.jellyfin.androidtv.preference.TelemetryPreferences
 import org.jellyfin.androidtv.preference.constant.UserSelectBehavior.DISABLED
 import org.jellyfin.androidtv.preference.constant.UserSelectBehavior.LAST_USER
 import org.jellyfin.androidtv.preference.constant.UserSelectBehavior.SPECIFIC_USER
+import org.jellyfin.androidtv.util.EmbyCompatInterceptor
 import org.jellyfin.androidtv.util.sdk.forUser
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.ApiClientException
@@ -59,6 +60,7 @@ class SessionRepositoryImpl(
 	private val serverRepository: ServerRepository,
 	private val telemetryPreferences: TelemetryPreferences,
 	private val embyApiClient: EmbyApiClient,
+	private val embyCompatInterceptor: EmbyCompatInterceptor,
 ) : SessionRepository {
 	private val currentSessionMutex = Mutex()
 	private val _currentSession = MutableStateFlow<Session?>(null)
@@ -141,19 +143,31 @@ class SessionRepositoryImpl(
 		Timber.i("Updating current session. userId=${session?.userId} server=${server?.serverVersion}")
 
 		if (session == null) {
+			embyCompatInterceptor.setServerType(ServerType.JELLYFIN)
+			embyCompatInterceptor.setUserId(null)
 			userApiClient.applySession(null, deviceInfo)
 			embyApiClient.reset()
 			userRepository.setCurrentUser(null)
 			serverRepository.setCurrentServer(null)
 			preferencesRepository.onSessionChanged()
 		} else {
-			when (server!!.serverType) {
+			embyCompatInterceptor.setServerType(server!!.serverType)
+			embyCompatInterceptor.setUserId(session.userId.toString())
+			when (server.serverType) {
 				ServerType.EMBY -> {
 					val storeServer = authenticationStore.getServer(session.serverId) ?: return false
 					embyApiClient.configure(
 						baseUrl = storeServer.address,
 						accessToken = session.accessToken,
 						userId = session.userId.toString(),
+					)
+					// Also configure the Jellyfin SDK client so shared components
+					// (DisplayPreferences, SocketHandler, UserViews, etc.) can reach the server.
+					// Emby accepts the X-Emby-Authorization header format used by the SDK.
+					userApiClient.update(
+						baseUrl = storeServer.address,
+						accessToken = session.accessToken,
+						deviceInfo = deviceInfo,
 					)
 					val embyUser = try {
 						withContext(Dispatchers.IO) { embyApiClient.validateCurrentUser() }

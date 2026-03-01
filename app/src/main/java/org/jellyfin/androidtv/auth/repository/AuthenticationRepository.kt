@@ -43,6 +43,7 @@ import org.jellyfin.sdk.model.api.AuthenticationResult
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.UserDto
 import org.moonfin.server.core.model.ServerType
+import org.jellyfin.sdk.model.serializer.toUUID
 import org.moonfin.server.emby.EmbyApiClient
 import timber.log.Timber
 import java.time.Instant
@@ -210,12 +211,12 @@ class AuthenticationRepositoryImpl(
 	) {
 		val currentUser = authenticationStore.getUser(server.id, userId)
 		val updatedUser = currentUser?.copy(
-			name = userInfo.name!!,
+			name = userInfo.name ?: currentUser.name,
 			lastUsed = Instant.now().toEpochMilli(),
 			imageTag = userInfo.primaryImageTag,
 			accessToken = accessToken,
 		) ?: AuthenticationStoreUser(
-			name = userInfo.name!!,
+			name = userInfo.name ?: "User",
 			imageTag = userInfo.primaryImageTag,
 			accessToken = accessToken,
 		)
@@ -234,13 +235,14 @@ class AuthenticationRepositoryImpl(
 		val accessToken = result.accessToken ?: return@flow emit(RequireSignInState)
 		val userInfo = result.user ?: return@flow emit(RequireSignInState)
 		val userIdStr = userInfo.id.ifEmpty { return@flow emit(RequireSignInState) }
-		val userId = runCatching { java.util.UUID.fromString(userIdStr) }.getOrElse {
+		val userId = runCatching { userIdStr.toUUID() }.getOrElse {
+			Timber.e(it, "Failed to parse Emby user ID: $userIdStr")
 			return@flow emit(RequireSignInState)
 		}
 		val user = PrivateUser(
 			id = userId,
 			serverId = server.id,
-			name = userInfo.name!!,
+			name = userInfo.name ?: username,
 			accessToken = accessToken,
 			imageTag = userInfo.primaryImageTag,
 			lastUsed = Instant.now().toEpochMilli(),

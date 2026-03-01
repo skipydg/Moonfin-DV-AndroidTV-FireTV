@@ -88,7 +88,7 @@ class ServerRepositoryImpl(
 				val serverType = try {
 					val api = jellyfin.createApi(discoveryInfo.address)
 					val systemInfo by api.systemApi.getPublicSystemInfo()
-					ServerType.fromProductName(systemInfo.productName)
+					ServerType.detect(systemInfo.productName, systemInfo.version)
 				} catch (_: Exception) {
 					ServerType.JELLYFIN
 				}
@@ -147,7 +147,7 @@ class ServerRepositoryImpl(
 			val branding = api.getBrandingOptionsOrDefault()
 
 			val id = systemInfo.id!!.toUUID()
-			val serverType = ServerType.fromProductName(systemInfo.productName)
+			val serverType = ServerType.detect(systemInfo.productName, systemInfo.version)
 			val defaultName = systemInfo.serverName ?: systemInfo.productName ?: "Server"
 
 			val server = authenticationStore.getServer(id)?.copy(
@@ -174,10 +174,53 @@ class ServerRepositoryImpl(
 
 			emit(ConnectedState(id, systemInfo))
 		} else {
-			val addressCandidatesWithIssues = (badRecommendations + goodRecommendations)
-				.groupBy { it.address }
-				.mapValues { (_, entry) -> entry.flatMap { server -> server.issues } }
-			emit(UnableToConnectState(addressCandidatesWithIssues))
+			// Jellyfin SDK scores Emby servers as BAD because their productName is not
+			// "Jellyfin Server". Check if any bad recommendation actually connected
+			// successfully and is an Emby server we can use.
+			val embyCandidate = badRecommendations.firstOrNull { rec ->
+				rec.systemInfo.isSuccess && rec.systemInfo.getOrNull()?.let { info ->
+					info.id != null && ServerType.detect(info.productName, info.version) == ServerType.EMBY
+				} == true
+			}
+
+			if (embyCandidate != null) {
+				val systemInfo = embyCandidate.systemInfo.getOrThrow()
+				val api = jellyfin.createApi(embyCandidate.address)
+				val branding = api.getBrandingOptionsOrDefault()
+
+				val id = systemInfo.id!!.toUUID()
+				val defaultName = systemInfo.serverName ?: "Emby Server"
+
+				val server = authenticationStore.getServer(id)?.copy(
+					name = defaultName,
+					address = embyCandidate.address,
+					version = systemInfo.version,
+					loginDisclaimer = branding.loginDisclaimer,
+					splashscreenEnabled = branding.splashscreenEnabled,
+					setupCompleted = true,
+					lastUsed = Instant.now().toEpochMilli(),
+					serverType = ServerType.EMBY,
+				) ?: AuthenticationStoreServer(
+					name = defaultName,
+					address = embyCandidate.address,
+					version = systemInfo.version,
+					loginDisclaimer = branding.loginDisclaimer,
+					splashscreenEnabled = branding.splashscreenEnabled,
+					setupCompleted = true,
+					serverType = ServerType.EMBY,
+				)
+
+				authenticationStore.putServer(id, server)
+				loadStoredServers()
+
+				Timber.i("Connected to Emby server: %s at %s", defaultName, embyCandidate.address)
+				emit(ConnectedState(id, systemInfo))
+			} else {
+				val addressCandidatesWithIssues = (badRecommendations + goodRecommendations)
+					.groupBy { it.address }
+					.mapValues { (_, entry) -> entry.flatMap { server -> server.issues } }
+				emit(UnableToConnectState(addressCandidatesWithIssues))
+			}
 		}
 	}.flowOn(Dispatchers.IO)
 
@@ -231,7 +274,7 @@ class ServerRepositoryImpl(
 				loginDisclaimer = branding.loginDisclaimer ?: server.loginDisclaimer,
 				splashscreenEnabled = branding.splashscreenEnabled,
 				setupCompleted = systemInfo.startupWizardCompleted ?: server.setupCompleted,
-				serverType = ServerType.fromProductName(systemInfo.productName),
+				serverType = ServerType.detect(systemInfo.productName, systemInfo.version),
 				lastRefreshed = now
 			)
 		}

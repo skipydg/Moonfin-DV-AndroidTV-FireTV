@@ -80,17 +80,17 @@ class EmbyApiClient(
             displayPreferencesService = null
             return
         }
-        userService = UserServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setBearerToken(accessToken) }
-        sessionsService = SessionsServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setBearerToken(accessToken) }
-        itemsService = ItemsServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setBearerToken(accessToken) }
-        userLibraryService = UserLibraryServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setBearerToken(accessToken) }
-        tvShowsService = TvShowsServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setBearerToken(accessToken) }
-        libraryService = LibraryServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setBearerToken(accessToken) }
-        playstateService = PlaystateServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setBearerToken(accessToken) }
-        userViewsService = UserViewsServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setBearerToken(accessToken) }
-        liveTvService = LiveTvServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setBearerToken(accessToken) }
-        instantMixService = InstantMixServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setBearerToken(accessToken) }
-        displayPreferencesService = DisplayPreferencesServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setBearerToken(accessToken) }
+        userService = UserServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        sessionsService = SessionsServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        itemsService = ItemsServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        userLibraryService = UserLibraryServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        tvShowsService = TvShowsServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        libraryService = LibraryServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        playstateService = PlaystateServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        userViewsService = UserViewsServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        liveTvService = LiveTvServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        instantMixService = InstantMixServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        displayPreferencesService = DisplayPreferencesServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
     }
 
     fun reset() = configure("", null, null)

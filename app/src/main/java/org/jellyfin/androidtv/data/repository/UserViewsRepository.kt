@@ -15,6 +15,7 @@ import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.userViewsApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.CollectionType
+import timber.log.Timber
 
 interface UserViewsRepository {
 	val views: Flow<Collection<BaseItemDto>>
@@ -39,20 +40,30 @@ class UserViewsRepositoryImpl(
 	override val views: Flow<Collection<BaseItemDto>> = sessionChange
 		.flatMapLatest {
 			flow {
-				val views by api.userViewsApi.getUserViews(includeHidden = false)
-				val filteredViews = views.items
-					.filter { isSupported(it.collectionType) }
-				emit(filteredViews)
+				try {
+					val views by api.userViewsApi.getUserViews(includeHidden = false)
+					val filteredViews = views.items
+						.filter { isSupported(it.collectionType) }
+					emit(filteredViews)
+				} catch (err: Exception) {
+					Timber.e(err, "Failed to get user views")
+					emit(emptyList())
+				}
 			}
 		}.flowOn(Dispatchers.IO).shareIn(scope, SharingStarted.Lazily, replay = 1)
 
 	override val allViews: Flow<Collection<BaseItemDto>> = sessionChange
 		.flatMapLatest {
 			flow {
-				val views by api.userViewsApi.getUserViews(includeHidden = true)
-				val filteredViews = views.items
-					.filter { isSupported(it.collectionType) }
-				emit(filteredViews)
+				try {
+					val views by api.userViewsApi.getUserViews(includeHidden = true)
+					val filteredViews = views.items
+						.filter { isSupported(it.collectionType) }
+					emit(filteredViews)
+				} catch (err: Exception) {
+					Timber.e(err, "Failed to get all user views")
+					emit(emptyList())
+				}
 			}
 		}.flowOn(Dispatchers.IO).shareIn(scope, SharingStarted.Lazily, replay = 1)
 
