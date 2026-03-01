@@ -5,6 +5,7 @@ import org.emby.client.api.InstantMixServiceApi
 import org.emby.client.api.ItemsServiceApi
 import org.emby.client.api.LibraryServiceApi
 import org.emby.client.api.LiveTvServiceApi
+import org.emby.client.api.MediaInfoServiceApi
 import org.emby.client.api.PlaystateServiceApi
 import org.emby.client.api.SessionsServiceApi
 import org.emby.client.api.TvShowsServiceApi
@@ -31,7 +32,7 @@ data class EmbyAuthResult(
 class EmbyApiClient(
     private val appVersion: String,
     private val clientName: String,
-    private val deviceId: String,
+    val deviceId: String,
     private val deviceName: String,
 ) {
     var baseUrl: String = ""
@@ -43,23 +44,25 @@ class EmbyApiClient(
 
     private var userService: UserServiceApi? = null
     private var sessionsService: SessionsServiceApi? = null
-    internal var itemsService: ItemsServiceApi? = null
+    var itemsService: ItemsServiceApi? = null
         private set
-    internal var userLibraryService: UserLibraryServiceApi? = null
+    var userLibraryService: UserLibraryServiceApi? = null
         private set
-    internal var tvShowsService: TvShowsServiceApi? = null
+    var tvShowsService: TvShowsServiceApi? = null
         private set
-    internal var libraryService: LibraryServiceApi? = null
+    var libraryService: LibraryServiceApi? = null
         private set
-    internal var playstateService: PlaystateServiceApi? = null
+    var playstateService: PlaystateServiceApi? = null
         private set
-    internal var userViewsService: UserViewsServiceApi? = null
+    var userViewsService: UserViewsServiceApi? = null
         private set
-    internal var liveTvService: LiveTvServiceApi? = null
+    var liveTvService: LiveTvServiceApi? = null
         private set
-    internal var instantMixService: InstantMixServiceApi? = null
+    var instantMixService: InstantMixServiceApi? = null
         private set
-    internal var displayPreferencesService: DisplayPreferencesServiceApi? = null
+    var displayPreferencesService: DisplayPreferencesServiceApi? = null
+        private set
+    var mediaInfoService: MediaInfoServiceApi? = null
         private set
 
     fun configure(baseUrl: String, accessToken: String?, userId: String?) {
@@ -78,6 +81,7 @@ class EmbyApiClient(
             liveTvService = null
             instantMixService = null
             displayPreferencesService = null
+            mediaInfoService = null
             return
         }
         userService = UserServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
@@ -91,6 +95,7 @@ class EmbyApiClient(
         liveTvService = LiveTvServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
         instantMixService = InstantMixServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
         displayPreferencesService = DisplayPreferencesServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        mediaInfoService = MediaInfoServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
     }
 
     fun reset() = configure("", null, null)

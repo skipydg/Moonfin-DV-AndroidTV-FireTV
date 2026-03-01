@@ -26,7 +26,7 @@ android {
 
 dependencies {
 	api(projects.server.core)
-	implementation("org.emby:emby-client:4.9.3.0")
+	api("org.emby:emby-client:4.9.3.0")
 
 	implementation(libs.ktor.client.core)
 	implementation(libs.kotlinx.coroutines)

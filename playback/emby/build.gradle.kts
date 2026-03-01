@@ -28,6 +28,8 @@ dependencies {
 	api(projects.playback.core)
 	api(projects.server.emby)
 
+	implementation(projects.playback.jellyfin)
+	implementation(libs.jellyfin.sdk)
 	implementation(libs.kotlinx.coroutines)
 	implementation(libs.timber)
 	coreLibraryDesugaring(libs.android.desugar)
