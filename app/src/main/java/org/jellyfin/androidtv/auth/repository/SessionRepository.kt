@@ -139,6 +139,14 @@ class SessionRepositoryImpl(
 			authenticationPreferences[AuthenticationPreferences.lastServerId] = session.serverId.toString()
 			authenticationPreferences[AuthenticationPreferences.lastUserId] = session.userId.toString()
 
+			// Pre-register interceptor so early API calls (e.g. Branding) are patched
+			val storeServer = authenticationStore.getServer(session.serverId)
+			if (storeServer != null && storeServer.serverType == ServerType.EMBY) {
+				embyCompatInterceptor.setServerType(ServerType.EMBY)
+				embyCompatInterceptor.setUserId(session.userId.toString())
+				embyCompatInterceptor.registerEmbyServer(storeServer.address, session.userId.toString())
+			}
+
 			// Check if server version is supported
 			server = serverRepository.getServer(session.serverId, true)
 			if (server == null || !server.versionSupported) return false

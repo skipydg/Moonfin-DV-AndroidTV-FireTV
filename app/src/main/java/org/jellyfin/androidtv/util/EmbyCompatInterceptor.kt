@@ -81,7 +81,7 @@ class EmbyCompatInterceptor : Interceptor {
 		var patched = patchStartIndex(json)
 		patched = replaceNumericIds(patched, NUMERIC_ID_PATTERN)
 		patched = replaceNumericIds(patched, BARE_NUMERIC_ID_PATTERN)
-		patched = patchMissingRequiredFields(patched)
+		patched = patchMissingRequiredFields(patched, request.url.encodedPath)
 
 		if (patched == json) {
 			return response.newBuilder()
@@ -180,6 +180,13 @@ class EmbyCompatInterceptor : Interceptor {
 			return "$prefix/Users/$userId/Items/$itemId/Rating"
 		}
 
+		// Single item fetch: /Items/{uuid} → /Users/{userId}/Items/{uuid}
+		SINGLE_ITEM_PATTERN.find(path)?.let { match ->
+			val prefix = match.groupValues[1]
+			val itemId = match.groupValues[2]
+			return "$prefix/Users/$userId/Items/$itemId"
+		}
+
 		return null
 	}
 
@@ -258,10 +265,22 @@ class EmbyCompatInterceptor : Interceptor {
 		}
 	}
 
-	private fun patchMissingRequiredFields(json: String): String {
+	private fun patchMissingRequiredFields(json: String, path: String): String {
 		return try {
-			val root = JSONObject(json)
-			if (patchObjectTree(root)) root.toString() else json
+			val trimmed = json.trimStart()
+			if (trimmed.startsWith("[")) {
+				val arr = JSONArray(json)
+				var modified = false
+				for (i in 0 until arr.length()) {
+					arr.optJSONObject(i)?.let { if (patchObjectTree(it)) modified = true }
+				}
+				if (modified) arr.toString() else json
+			} else {
+				val root = JSONObject(json)
+				var modified = patchObjectTree(root)
+				modified = patchEndpointFields(root, path) || modified
+				if (modified) root.toString() else json
+			}
 		} catch (_: Exception) {
 			json
 		}
@@ -352,6 +371,21 @@ class EmbyCompatInterceptor : Interceptor {
 
 		modified = patchJsonArray(obj, "MediaStreams", ::patchMediaStream) || modified
 
+		// Strip Attachment-type MediaStreams — Emby sends Type="Attachment" which is
+		// absent from Jellyfin's MediaStreamType enum and causes deserialization failure.
+		obj.optJSONArray("MediaStreams")?.let { streams ->
+			var i = 0
+			while (i < streams.length()) {
+				val stream = streams.optJSONObject(i)
+				if (stream != null && stream.optString("Type") == "Attachment") {
+					streams.remove(i)
+					modified = true
+				} else {
+					i++
+				}
+			}
+		}
+
 		return modified
 	}
 
@@ -385,6 +419,32 @@ class EmbyCompatInterceptor : Interceptor {
 		return modified
 	}
 
+	private fun patchEndpointFields(obj: JSONObject, path: String): Boolean {
+		var modified = false
+		if (path.contains("/Branding/Configuration", ignoreCase = true)) {
+			if (!obj.has("SplashscreenEnabled")) {
+				obj.put("SplashscreenEnabled", false); modified = true
+			}
+		}
+		if (path.contains("/DisplayPreferences", ignoreCase = true)) {
+			val defaults = mapOf(
+				"RememberIndexing" to false,
+				"PrimaryImageHeight" to 250,
+				"PrimaryImageWidth" to 250,
+				"ScrollDirection" to "Horizontal",
+				"ShowBackdrop" to true,
+				"RememberSorting" to false,
+				"ShowSidebar" to true
+			)
+			for ((key, value) in defaults) {
+				if (!obj.has(key)) {
+					obj.put(key, value); modified = true
+				}
+			}
+		}
+		return modified
+	}
+
 	companion object {
 		// "SomeId":"12345" — quoted numeric string
 		private val NUMERIC_ID_PATTERN = Regex("\"(\\w*Id)\"\\s*:\\s*\"(\\d+)\"")
@@ -398,6 +458,7 @@ class EmbyCompatInterceptor : Interceptor {
 		private val PLAYING_ITEMS_PATTERN = Regex("(.*)/PlayingItems/([^/]+)$", RegexOption.IGNORE_CASE)
 		private val USER_ITEMS_USERDATA_PATTERN = Regex("(.*)/UserItems/([^/]+)/UserData$", RegexOption.IGNORE_CASE)
 		private val USER_ITEMS_RATING_PATTERN = Regex("(.*)/UserItems/([^/]+)/Rating$", RegexOption.IGNORE_CASE)
+		private val SINGLE_ITEM_PATTERN = Regex("(.*)/Items/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$", RegexOption.IGNORE_CASE)
 
 		fun numericToUuid(id: String): String {
 			val padded = id.padStart(32, '0')

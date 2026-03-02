@@ -351,7 +351,8 @@ public class PlaybackController implements PlaybackControllerNotifiable {
             } else {
                 // Prefer the media source with the same id as the item
                 for (MediaSourceInfo mediaSource : mediaSources) {
-                    if (UUIDSerializerKt.toUUIDOrNull(mediaSource.getId()).equals(item.getId())) {
+                    UUID sourceId = UUIDSerializerKt.toUUIDOrNull(mediaSource.getId());
+                    if (sourceId != null && sourceId.equals(item.getId())) {
                         return mediaSource;
                     }
                 }

@@ -29,6 +29,7 @@ androidx-window = "1.5.1"
 androidx-work = "2.11.1"
 coil = "3.3.0"
 detekt = "1.23.8"
+emby-client = "4.9.3.0"
 java-jdk = "21"
 jellyfin-androidx-media = "1.9.0+1"
 jellyfin-sdk = "1.8.6"
@@ -54,6 +55,9 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 
 [libraries]
+# Emby
+emby-client = { module = "org.emby:emby-client", version.ref = "emby-client" }
+
 # Jellyfin
 jellyfin-sdk = { module = "org.jellyfin.sdk:jellyfin-core", version.ref = "jellyfin-sdk" }
 

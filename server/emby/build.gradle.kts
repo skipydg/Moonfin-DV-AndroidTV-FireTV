@@ -26,7 +26,7 @@ android {
 
 dependencies {
 	api(projects.server.core)
-	api("org.emby:emby-client:4.9.3.0")
+	api(libs.emby.client)
 
 	implementation(libs.ktor.client.core)
 	implementation(libs.ktor.client.okhttp)
