@@ -31,4 +31,7 @@ dependencies {
 	api(libs.koin.core)
 
 	coreLibraryDesugaring(libs.android.desugar)
+
+	testImplementation(libs.kotest.runner.junit5)
+	testImplementation(libs.kotest.assertions)
 }
