@@ -197,25 +197,32 @@ class EmbyCompatInterceptor : Interceptor {
 
 	private val ITEM_TYPE_PARAMS = setOf("includeItemTypes", "excludeItemTypes")
 
+	private val JELLYFIN_ONLY_PARAMS = setOf(
+		"streamOptions", "enableAudioVbrEncoding", "mediaSourceId",
+		"allowVideoStreamCopy", "allowAudioStreamCopy",
+	)
+
 	private fun rewriteQueryParameters(url: okhttp3.HttpUrl): okhttp3.HttpUrl {
 		val parameterNames = url.queryParameterNames
 		if (parameterNames.isEmpty()) return url
 
-		var needsConversion = false
+		var needsRewrite = false
 		for (name in parameterNames) {
+			if (name in JELLYFIN_ONLY_PARAMS) { needsRewrite = true; break }
 			for (value in url.queryParameterValues(name)) {
 				if (value != null) {
-					if (uuidToNumeric(value) != null) { needsConversion = true; break }
-					if (name in ITEM_TYPE_PARAMS && value in ITEM_TYPE_MAPPINGS) { needsConversion = true; break }
+					if (uuidToNumeric(value) != null) { needsRewrite = true; break }
+					if (name in ITEM_TYPE_PARAMS && value in ITEM_TYPE_MAPPINGS) { needsRewrite = true; break }
 				}
 			}
-			if (needsConversion) break
+			if (needsRewrite) break
 		}
-		if (!needsConversion) return url
+		if (!needsRewrite) return url
 
 		val builder = url.newBuilder()
 		for (n in parameterNames) builder.removeAllQueryParameters(n)
 		for (n in parameterNames) {
+			if (n in JELLYFIN_ONLY_PARAMS) continue
 			for (v in url.queryParameterValues(n)) {
 				var converted = if (v != null) uuidToNumeric(v) ?: v else v
 				if (converted != null && n in ITEM_TYPE_PARAMS) {
