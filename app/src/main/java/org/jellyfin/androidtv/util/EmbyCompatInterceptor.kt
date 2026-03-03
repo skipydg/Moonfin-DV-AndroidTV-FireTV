@@ -190,6 +190,13 @@ class EmbyCompatInterceptor : Interceptor {
 		return null
 	}
 
+	private val ITEM_TYPE_MAPPINGS = mapOf(
+		"LiveTvProgram" to "Program",
+		"LiveTvChannel" to "TvChannel",
+	)
+
+	private val ITEM_TYPE_PARAMS = setOf("includeItemTypes", "excludeItemTypes")
+
 	private fun rewriteQueryParameters(url: okhttp3.HttpUrl): okhttp3.HttpUrl {
 		val parameterNames = url.queryParameterNames
 		if (parameterNames.isEmpty()) return url
@@ -197,9 +204,9 @@ class EmbyCompatInterceptor : Interceptor {
 		var needsConversion = false
 		for (name in parameterNames) {
 			for (value in url.queryParameterValues(name)) {
-				if (value != null && uuidToNumeric(value) != null) {
-					needsConversion = true
-					break
+				if (value != null) {
+					if (uuidToNumeric(value) != null) { needsConversion = true; break }
+					if (name in ITEM_TYPE_PARAMS && value in ITEM_TYPE_MAPPINGS) { needsConversion = true; break }
 				}
 			}
 			if (needsConversion) break
@@ -210,7 +217,10 @@ class EmbyCompatInterceptor : Interceptor {
 		for (n in parameterNames) builder.removeAllQueryParameters(n)
 		for (n in parameterNames) {
 			for (v in url.queryParameterValues(n)) {
-				val converted = if (v != null) uuidToNumeric(v) ?: v else v
+				var converted = if (v != null) uuidToNumeric(v) ?: v else v
+				if (converted != null && n in ITEM_TYPE_PARAMS) {
+					converted = ITEM_TYPE_MAPPINGS[converted] ?: converted
+				}
 				builder.addQueryParameter(n, converted)
 			}
 		}
@@ -295,9 +305,9 @@ class EmbyCompatInterceptor : Interceptor {
 		}
 
 		modified = patchJsonArray(obj, "MediaSources", ::patchMediaSourceInfo) || modified
+		modified = patchMediaStreams(obj) || modified
 		modified = patchJsonArray(obj, "Chapters", ::patchChapterInfo) || modified
 
-		// Strip LockedFields — Emby sends values (e.g. "SortName") absent from Jellyfin's MetadataField enum
 		if (obj.has("LockedFields")) {
 			obj.put("LockedFields", JSONArray())
 			modified = true
@@ -369,23 +379,25 @@ class EmbyCompatInterceptor : Interceptor {
 			obj.put("SupportsProbing", true); modified = true
 		}
 
-		modified = patchJsonArray(obj, "MediaStreams", ::patchMediaStream) || modified
+		modified = patchMediaStreams(obj) || modified
 
-		// Strip Attachment-type MediaStreams — Emby sends Type="Attachment" which is
-		// absent from Jellyfin's MediaStreamType enum and causes deserialization failure.
-		obj.optJSONArray("MediaStreams")?.let { streams ->
-			var i = 0
-			while (i < streams.length()) {
-				val stream = streams.optJSONObject(i)
-				if (stream != null && stream.optString("Type") == "Attachment") {
-					streams.remove(i)
-					modified = true
-				} else {
-					i++
-				}
+		return modified
+	}
+
+	private fun patchMediaStreams(obj: JSONObject): Boolean {
+		val streams = obj.optJSONArray("MediaStreams") ?: return false
+		var modified = false
+		var i = 0
+		while (i < streams.length()) {
+			val stream = streams.optJSONObject(i)
+			if (stream != null && stream.optString("Type") == "Attachment") {
+				streams.remove(i)
+				modified = true
+			} else {
+				if (stream != null && patchMediaStream(stream)) modified = true
+				i++
 			}
 		}
-
 		return modified
 	}
 
