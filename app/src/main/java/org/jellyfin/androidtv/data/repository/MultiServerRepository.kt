@@ -113,7 +113,7 @@ class MultiServerRepositoryImpl(
 				Timber.d("MultiServerRepository: Found logged-in user on server ${server.name}")
 
 				if (server.serverType == ServerType.EMBY) {
-					embyCompatInterceptor.registerEmbyServer(server.address, userId.toString())
+					embyCompatInterceptor.registerEmbyServer(server.address, userId.toString(), accessToken)
 				}
 
 				val deviceInfo = defaultDeviceInfo.forUser(userId)
@@ -141,7 +141,7 @@ class MultiServerRepositoryImpl(
 					if (server != null) {
 						Timber.d("MultiServerRepository: Using current session for server ${server.name}")
 						if (server.serverType == ServerType.EMBY) {
-							embyCompatInterceptor.registerEmbyServer(server.address, currentSession.userId.toString())
+							embyCompatInterceptor.registerEmbyServer(server.address, currentSession.userId.toString(), currentSession.accessToken)
 						}
 						val deviceInfo = defaultDeviceInfo.forUser(currentSession.userId)
 						val apiClient = jellyfin.createApi(

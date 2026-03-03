@@ -73,7 +73,7 @@ class ApiClientFactory(
 		val deviceInfo = defaultDeviceInfo.forUser(resolvedUserId)
 
 		if (server.serverType == ServerType.EMBY) {
-			embyCompatInterceptor.registerEmbyServer(server.address, resolvedUserId.toString())
+			embyCompatInterceptor.registerEmbyServer(server.address, resolvedUserId.toString(), accessToken)
 		}
 
 		return jellyfin.createApi(

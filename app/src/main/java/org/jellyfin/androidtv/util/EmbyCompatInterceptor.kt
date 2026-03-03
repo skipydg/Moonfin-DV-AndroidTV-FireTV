@@ -24,6 +24,7 @@ class EmbyCompatInterceptor : Interceptor {
 	private val _serverType = AtomicReference(ServerType.JELLYFIN)
 	private val _userId = AtomicReference<String?>(null)
 	private val _embyServers = ConcurrentHashMap<String, String>()
+	private val _embyTokens = ConcurrentHashMap<String, String>()
 	private val _onTokenExpired = AtomicReference<(() -> Unit)?>(null)
 
 	fun setServerType(type: ServerType) {
@@ -34,8 +35,10 @@ class EmbyCompatInterceptor : Interceptor {
 		_userId.set(userId)
 	}
 
-	fun registerEmbyServer(baseUrl: String, userId: String) {
-		_embyServers[baseUrl.trimEnd('/')] = userId
+	fun registerEmbyServer(baseUrl: String, userId: String, accessToken: String? = null) {
+		val normalized = baseUrl.trimEnd('/')
+		_embyServers[normalized] = userId
+		if (accessToken != null) _embyTokens[normalized] = accessToken
 	}
 
 	fun setOnTokenExpired(callback: (() -> Unit)?) {
@@ -51,21 +54,44 @@ class EmbyCompatInterceptor : Interceptor {
 		return null
 	}
 
+	private fun resolveAccessToken(request: okhttp3.Request): String? {
+		val requestUrl = request.url.toString()
+		for ((baseUrl, token) in _embyTokens) {
+			if (requestUrl.startsWith(baseUrl)) return token
+		}
+		return null
+	}
+
+	private fun isStreamingPath(path: String): Boolean =
+		STREAMING_PATH_PATTERN.containsMatchIn(path)
+
 	override fun intercept(chain: Interceptor.Chain): Response {
 		val original = chain.request()
 		val embyUserId = resolveEmbyUserId(original)
 		if (embyUserId == null) return chain.proceed(original)
 
-		val request = rewriteRequest(original, embyUserId)
+		var request = rewriteRequest(original, embyUserId)
 		if (request.url != original.url) {
 			Timber.d("EmbyCompat: rewrote %s → %s", original.url.encodedPath, request.url)
+		}
+
+		val path = request.url.encodedPath
+		val streaming = isStreamingPath(path)
+		if (streaming) {
+			val token = resolveAccessToken(request)
+			if (token != null && request.url.queryParameter("api_key") == null) {
+				val url = request.url.newBuilder().addQueryParameter("api_key", token).build()
+				request = request.newBuilder().url(url).build()
+			}
 		}
 
 		val response = chain.proceed(request)
 
 		if (response.code == 401) {
-			Timber.w("EmbyCompat: received 401 for %s", request.url.encodedPath)
-			_onTokenExpired.get()?.invoke()
+			Timber.w("EmbyCompat: received 401 for %s", path)
+			if (!streaming) {
+				_onTokenExpired.get()?.invoke()
+			}
 			return response
 		}
 
@@ -465,6 +491,8 @@ class EmbyCompatInterceptor : Interceptor {
 	}
 
 	companion object {
+		private val STREAMING_PATH_PATTERN = Regex("/(Videos|Audio)/[^/]+/(stream|master\\.m3u8|main\\.m3u8)", RegexOption.IGNORE_CASE)
+
 		// "SomeId":"12345" — quoted numeric string
 		private val NUMERIC_ID_PATTERN = Regex("\"(\\w*Id)\"\\s*:\\s*\"(\\d+)\"")
 		// "SomeId":927 — bare (unquoted) numeric value

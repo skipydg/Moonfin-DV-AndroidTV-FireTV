@@ -144,7 +144,7 @@ class SessionRepositoryImpl(
 			if (storeServer != null && storeServer.serverType == ServerType.EMBY) {
 				embyCompatInterceptor.setServerType(ServerType.EMBY)
 				embyCompatInterceptor.setUserId(session.userId.toString())
-				embyCompatInterceptor.registerEmbyServer(storeServer.address, session.userId.toString())
+				embyCompatInterceptor.registerEmbyServer(storeServer.address, session.userId.toString(), session.accessToken)
 			}
 
 			// Check if server version is supported
