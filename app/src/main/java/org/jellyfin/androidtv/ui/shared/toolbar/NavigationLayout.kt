@@ -37,7 +37,7 @@ fun rememberNavbarPosition(): NavbarPosition {
 
 @Composable
 fun NavigationLayout(
-	activeButton: MainToolbarActiveButton,
+	activeButton: NavbarActiveButton,
 	activeLibraryId: UUID? = null,
 	content: @Composable () -> Unit
 ) {
@@ -54,7 +54,7 @@ fun NavigationLayout(
 		}
 		NavbarPosition.TOP -> {
 			Column(modifier = Modifier.fillMaxSize()) {
-				MainToolbar(
+				Navbar(
 					activeButton = activeButton,
 					activeLibraryId = activeLibraryId
 				)
@@ -70,7 +70,7 @@ fun NavigationLayout(
  */
 @Composable
 fun NavigationOverlay(
-	activeButton: MainToolbarActiveButton,
+	activeButton: NavbarActiveButton,
 	activeLibraryId: UUID? = null
 ) {
 	when (rememberNavbarPosition()) {
@@ -81,7 +81,7 @@ fun NavigationOverlay(
 			)
 		}
 		NavbarPosition.TOP -> {
-			MainToolbar(
+			Navbar(
 				activeButton = activeButton,
 				activeLibraryId = activeLibraryId
 			)

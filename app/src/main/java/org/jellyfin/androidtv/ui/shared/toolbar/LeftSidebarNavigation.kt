@@ -98,7 +98,7 @@ import java.util.UUID
 
 @Composable
 fun LeftSidebarNavigation(
-	activeButton: MainToolbarActiveButton = MainToolbarActiveButton.None,
+	activeButton: NavbarActiveButton = NavbarActiveButton.None,
 	activeLibraryId: UUID? = null,
 ) {
 	val activity = LocalActivity.current
@@ -118,7 +118,7 @@ fun LeftSidebarNavigation(
 	val serverRepository = koinInject<ServerRepository>()
 	val currentServer by serverRepository.currentServer.collectAsState()
 	
-	// User image - same pattern as MainToolbar
+	// User image - same pattern as Navbar
 	val currentUser by remember { userRepository.currentUser.filterNotNull() }.collectAsState(null)
 	val userImageUrl = remember(currentUser) { currentUser?.primaryImage?.getUrl(api) }
 	
@@ -217,7 +217,7 @@ fun LeftSidebarNavigation(
 private fun CollapsibleSidebarContent(
 	isExpanded: Boolean,
 	onExpandedChange: (Boolean) -> Unit,
-	activeButton: MainToolbarActiveButton,
+	activeButton: NavbarActiveButton,
 	activeLibraryId: UUID?,
 	userImageUrl: String?,
 	userName: String,
@@ -296,7 +296,7 @@ private fun CollapsibleSidebarContent(
 	// Get root view to check for rowsFragment (HomeFragment)
 	val rootView = LocalView.current.rootView
 	val isHomeFragment = rootView.findViewById<android.view.View?>(R.id.rowsFragment) != null
-	val isSearchFragment = activeButton == MainToolbarActiveButton.Search
+	val isSearchFragment = activeButton == NavbarActiveButton.Search
 
 	// Show clock in top right based on clockBehavior preference
 	val showClock = clockBehavior == ClockBehavior.ALWAYS || clockBehavior == ClockBehavior.IN_MENUS
@@ -414,7 +414,7 @@ private fun CollapsibleSidebarContent(
 					showLabel = isExpanded,
 					isExpanded = isExpanded,
 					onClick = {
-						if (activeButton != MainToolbarActiveButton.User) {
+						if (activeButton != NavbarActiveButton.User) {
 							mediaManager.clearAudioQueue()
 							sessionRepository.destroyCurrentSession()
 							activity?.startActivity(ActivityDestinations.startup(activity))

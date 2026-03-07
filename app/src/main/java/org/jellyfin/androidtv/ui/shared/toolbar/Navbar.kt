@@ -88,7 +88,7 @@ import org.koin.core.qualifier.named
 import timber.log.Timber
 import java.util.UUID
 
-enum class MainToolbarActiveButton {
+enum class NavbarActiveButton {
 	User,
 	Home,
 	Library,
@@ -100,8 +100,8 @@ enum class MainToolbarActiveButton {
 
 
 @Composable
-fun MainToolbar(
-	activeButton: MainToolbarActiveButton = MainToolbarActiveButton.None,
+fun Navbar(
+	activeButton: NavbarActiveButton = NavbarActiveButton.None,
 	activeLibraryId: UUID? = null,
 ) {
 	val context = LocalContext.current
@@ -201,7 +201,7 @@ fun MainToolbar(
 	// Track current session for server switching
 	val currentSession by sessionRepository.currentSession.collectAsState()
 
-	MainToolbar(
+	Navbar(
 		userImage = userImage,
 		activeButton = activeButton,
 		activeLibraryId = activeLibraryId,
@@ -224,9 +224,9 @@ fun MainToolbar(
 }
 
 @Composable
-private fun MainToolbar(
+private fun Navbar(
 	userImage: String? = null,
-	activeButton: MainToolbarActiveButton,
+	activeButton: NavbarActiveButton,
 	activeLibraryId: UUID? = null,
 	userViews: List<BaseItemDto> = emptyList(),
 	aggregatedLibraries: List<org.jellyfin.androidtv.data.model.AggregatedLibrary> = emptyList(),
@@ -314,7 +314,7 @@ private fun MainToolbar(
 
 				IconButton(
 					onClick = {
-						if (activeButton != MainToolbarActiveButton.User) {
+						if (activeButton != NavbarActiveButton.User) {
 							mediaManager.clearAudioQueue()
 							sessionRepository.destroyCurrentSession()
 
@@ -534,14 +534,14 @@ private fun MainToolbar(
 	}
 }
 
-fun setupMainToolbarComposeView(
+fun setupNavbarComposeView(
 	composeView: androidx.compose.ui.platform.ComposeView,
-	activeButton: MainToolbarActiveButton = MainToolbarActiveButton.None,
+	activeButton: NavbarActiveButton = NavbarActiveButton.None,
 	activeLibraryId: UUID? = null,
 ) {
 	composeView.setContent {
 		JellyfinTheme {
-			MainToolbar(
+			Navbar(
 				activeButton = activeButton,
 				activeLibraryId = activeLibraryId,
 			)

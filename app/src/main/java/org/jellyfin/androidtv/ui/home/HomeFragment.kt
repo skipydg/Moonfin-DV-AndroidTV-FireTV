@@ -30,8 +30,8 @@ import org.jellyfin.androidtv.ui.home.mediabar.MediaBarSlideshowViewModel
 import org.jellyfin.androidtv.ui.home.mediabar.TrailerPreviewState
 import org.jellyfin.androidtv.ui.home.mediabar.ExoPlayerTrailerView
 import org.jellyfin.androidtv.ui.shared.toolbar.LeftSidebarNavigation
-import org.jellyfin.androidtv.ui.shared.toolbar.MainToolbar
-import org.jellyfin.androidtv.ui.shared.toolbar.MainToolbarActiveButton
+import org.jellyfin.androidtv.ui.shared.toolbar.Navbar
+import org.jellyfin.androidtv.ui.shared.toolbar.NavbarActiveButton
 import org.koin.android.ext.android.inject
 
 class HomeFragment : Fragment() {
@@ -85,7 +85,7 @@ class HomeFragment : Fragment() {
 				val sidebarView = view.findViewById<ComposeView>(R.id.sidebar)
 				sidebarView.setContent {
 					LeftSidebarNavigation(
-						activeButton = MainToolbarActiveButton.Home
+						activeButton = NavbarActiveButton.Home
 					)
 				}
 			}
@@ -98,8 +98,8 @@ class HomeFragment : Fragment() {
 				
 				val toolbarView = view.findViewById<ComposeView>(R.id.toolbar)
 				toolbarView.setContent {
-					MainToolbar(
-						activeButton = MainToolbarActiveButton.Home
+					Navbar(
+						activeButton = NavbarActiveButton.Home
 					)
 				}
 			}

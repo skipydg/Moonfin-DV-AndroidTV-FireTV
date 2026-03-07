@@ -37,8 +37,8 @@ import org.jellyfin.androidtv.ui.presentation.CardPresenter
 import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.preference.constant.NavbarPosition
 import org.jellyfin.androidtv.ui.shared.toolbar.LeftSidebarNavigation
-import org.jellyfin.androidtv.ui.shared.toolbar.MainToolbar
-import org.jellyfin.androidtv.ui.shared.toolbar.MainToolbarActiveButton
+import org.jellyfin.androidtv.ui.shared.toolbar.Navbar
+import org.jellyfin.androidtv.ui.shared.toolbar.NavbarActiveButton
 import org.jellyfin.androidtv.util.dp
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -57,6 +57,7 @@ class PersonDetailsFragment : Fragment() {
 	private var personName: String = ""
 	private var personDetails: JellyseerrPersonDetailsDto? = null
 	private var toolbarContainer: View? = null
+	private var topToolbarOverlayView: View? = null
 	private var personInfoContainer: LinearLayout? = null
 	private var sidebarId: Int = View.NO_ID
 
@@ -137,6 +138,10 @@ class PersonDetailsFragment : Fragment() {
 		scrollView.addView(rootLayout)
 		mainContainer.addView(scrollView)
 
+		scrollView.setOnScrollChangeListener { _, _, scrollY, _, _ ->
+			setTopToolbarVisible(scrollY < 100)
+		}
+
 		val navbarPosition = userPreferences[UserPreferences.navbarPosition]
 		
 		when (navbarPosition) {
@@ -159,7 +164,7 @@ class PersonDetailsFragment : Fragment() {
 					)
 					setContent {
 						LeftSidebarNavigation(
-							activeButton = MainToolbarActiveButton.Jellyseerr
+							activeButton = NavbarActiveButton.Jellyseerr
 						)
 					}
 				}
@@ -185,18 +190,40 @@ class PersonDetailsFragment : Fragment() {
 						FrameLayout.LayoutParams.WRAP_CONTENT
 					)
 					setContent {
-						MainToolbar(
-							activeButton = MainToolbarActiveButton.Jellyseerr
+						Navbar(
+							activeButton = NavbarActiveButton.Jellyseerr
 						)
 					}
 				}
 				sidebarId = topToolbarOverlay.id
+				topToolbarOverlayView = topToolbarContainer
 				topToolbarContainer.addView(topToolbarOverlay)
 				mainContainer.addView(topToolbarContainer)
 			}
 		}
 
 		return mainContainer
+	}
+
+	private fun setTopToolbarVisible(visible: Boolean) {
+		val toolbar = topToolbarOverlayView ?: return
+		if (visible) {
+			toolbar.animate().cancel()
+			toolbar.visibility = View.VISIBLE
+			toolbar.animate()
+				.alpha(1f)
+				.translationY(0f)
+				.setDuration(200)
+				.start()
+		} else {
+			toolbar.animate().cancel()
+			toolbar.animate()
+				.alpha(0f)
+				.translationY(-toolbar.height.toFloat())
+				.setDuration(200)
+				.withEndAction { toolbar.visibility = View.GONE }
+				.start()
+		}
 	}
 
 	/**

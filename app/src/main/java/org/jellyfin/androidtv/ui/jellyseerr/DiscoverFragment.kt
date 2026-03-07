@@ -22,9 +22,9 @@ import org.jellyfin.androidtv.data.service.jellyseerr.JellyseerrDiscoverItemDto
 import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.preference.constant.NavbarPosition
 import org.jellyfin.androidtv.ui.shared.toolbar.LeftSidebarNavigation
-import org.jellyfin.androidtv.ui.shared.toolbar.MainToolbar
+import org.jellyfin.androidtv.ui.shared.toolbar.Navbar
 import org.jellyfin.androidtv.util.toHtmlSpanned
-import org.jellyfin.androidtv.ui.shared.toolbar.MainToolbarActiveButton
+import org.jellyfin.androidtv.ui.shared.toolbar.NavbarActiveButton
 import org.jellyfin.androidtv.util.Debouncer
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -69,8 +69,8 @@ class DiscoverFragment : Fragment() {
 				topToolbarOverlay.isVisible = true
 				sidebarOverlay.isVisible = false
 				topToolbarOverlay.setContent {
-					MainToolbar(
-						activeButton = MainToolbarActiveButton.Jellyseerr
+					Navbar(
+						activeButton = NavbarActiveButton.Jellyseerr
 					)
 				}
 			}
@@ -79,7 +79,7 @@ class DiscoverFragment : Fragment() {
 				sidebarOverlay.isVisible = true
 				sidebarOverlay.setContent {
 					LeftSidebarNavigation(
-						activeButton = MainToolbarActiveButton.Jellyseerr
+						activeButton = NavbarActiveButton.Jellyseerr
 					)
 				}
 			}

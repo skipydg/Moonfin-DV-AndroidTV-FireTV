@@ -33,7 +33,7 @@ import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.preference.constant.NavbarPosition
 import org.jellyfin.androidtv.ui.search.composable.SearchTextInput
 import org.jellyfin.androidtv.ui.search.composable.SearchVoiceInput
-import org.jellyfin.androidtv.ui.shared.toolbar.MainToolbarActiveButton
+import org.jellyfin.androidtv.ui.shared.toolbar.NavbarActiveButton
 import org.jellyfin.androidtv.ui.shared.toolbar.NavigationLayout
 import org.jellyfin.androidtv.util.speech.rememberSpeechRecognizerAvailability
 import org.koin.androidx.compose.koinViewModel
@@ -75,7 +75,7 @@ class SearchFragment : Fragment() {
 				}
 			}
 
-			NavigationLayout(MainToolbarActiveButton.Search) {
+			NavigationLayout(NavbarActiveButton.Search) {
 				Column {
 					Row(
 						horizontalArrangement = Arrangement.spacedBy(12.dp),

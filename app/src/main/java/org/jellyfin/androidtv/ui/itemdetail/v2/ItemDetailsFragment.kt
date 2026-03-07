@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -97,8 +98,8 @@ import org.jellyfin.androidtv.ui.playback.PrePlaybackTrackSelector
 import org.jellyfin.androidtv.ui.playback.ThemeMusicPlayer
 import org.jellyfin.androidtv.ui.playlist.showAddToPlaylistDialog
 import org.jellyfin.androidtv.ui.shared.toolbar.LeftSidebarNavigation
-import org.jellyfin.androidtv.ui.shared.toolbar.MainToolbar
-import org.jellyfin.androidtv.ui.shared.toolbar.MainToolbarActiveButton
+import org.jellyfin.androidtv.ui.shared.toolbar.Navbar
+import org.jellyfin.androidtv.ui.shared.toolbar.NavbarActiveButton
 import org.jellyfin.androidtv.util.BitmapBlur
 import org.jellyfin.androidtv.util.PlaybackHelper
 import org.jellyfin.androidtv.util.TimeUtils
@@ -146,6 +147,7 @@ class ItemDetailsFragment : Fragment() {
 	private var contentId: Int = View.NO_ID
 	private var toolbarId: Int = View.NO_ID
 	private var lastFocusedBeforeSidebar: View? = null
+	private var toolbarOverlayView: View? = null
 
 	override fun onCreateView(
 		inflater: LayoutInflater,
@@ -301,7 +303,7 @@ class ItemDetailsFragment : Fragment() {
 					)
 					setContent {
 						LeftSidebarNavigation(
-							activeButton = MainToolbarActiveButton.None,
+							activeButton = NavbarActiveButton.None,
 						)
 					}
 				}
@@ -315,11 +317,12 @@ class ItemDetailsFragment : Fragment() {
 						FrameLayout.LayoutParams.WRAP_CONTENT
 					)
 					setContent {
-						MainToolbar(
-							activeButton = MainToolbarActiveButton.None,
+						Navbar(
+							activeButton = NavbarActiveButton.None,
 						)
 					}
 				}
+				toolbarOverlayView = toolbarOverlay
 				mainContainer.addView(toolbarOverlay)
 			}
 		}
@@ -334,6 +337,27 @@ class ItemDetailsFragment : Fragment() {
 			current = current.parent
 		}
 		return false
+	}
+
+	private fun setToolbarVisible(visible: Boolean) {
+		val toolbar = toolbarOverlayView ?: return
+		if (visible) {
+			toolbar.animate().cancel()
+			toolbar.visibility = View.VISIBLE
+			toolbar.animate()
+				.alpha(1f)
+				.translationY(0f)
+				.setDuration(200)
+				.start()
+		} else {
+			toolbar.animate().cancel()
+			toolbar.animate()
+				.alpha(0f)
+				.translationY(-toolbar.height.toFloat())
+				.setDuration(200)
+				.withEndAction { toolbar.visibility = View.GONE }
+				.start()
+		}
 	}
 
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -401,6 +425,7 @@ class ItemDetailsFragment : Fragment() {
 
 	override fun onDestroyView() {
 		themeMusicPlayer.stop()
+		toolbarOverlayView = null
 		super.onDestroyView()
 	}
 
@@ -878,6 +903,14 @@ class ItemDetailsFragment : Fragment() {
 						)
 					}
 				}
+			}
+		}
+
+		LaunchedEffect(listState) {
+			snapshotFlow {
+				listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+			}.collect { (index, offset) ->
+				setToolbarVisible(index == 0 && offset < 200)
 			}
 		}
 
@@ -1594,6 +1627,14 @@ class ItemDetailsFragment : Fragment() {
 			}
 		}
 
+		LaunchedEffect(listState) {
+			snapshotFlow {
+				listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+			}.collect { (index, offset) ->
+				setToolbarVisible(index == 0 && offset < 200)
+			}
+		}
+
 		// Focus play button but keep page scrolled to the top
 		LaunchedEffect(item.id) {
 			for (attempt in 1..5) {
@@ -1821,6 +1862,14 @@ class ItemDetailsFragment : Fragment() {
 						)
 					}
 				}
+			}
+		}
+
+		LaunchedEffect(listState) {
+			snapshotFlow {
+				listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+			}.collect { (index, offset) ->
+				setToolbarVisible(index == 0 && offset < 200)
 			}
 		}
 

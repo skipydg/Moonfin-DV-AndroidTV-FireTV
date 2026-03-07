@@ -127,7 +127,7 @@ class PluginSyncService(
 
 	/**
 	 * Counter incremented after settings are applied from server sync.
-	 * UI components (MainToolbar, LeftSidebarNavigation) observe this to
+	 * UI components (Navbar, LeftSidebarNavigation) observe this to
 	 * re-read preferences when plugin sync updates them on startup.
 	 */
 	private val _syncCompletedCounter = MutableStateFlow(0)
