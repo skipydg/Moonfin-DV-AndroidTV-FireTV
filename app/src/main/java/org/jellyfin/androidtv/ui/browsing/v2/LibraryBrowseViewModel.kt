@@ -1,5 +1,6 @@
 package org.jellyfin.androidtv.ui.browsing.v2
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
@@ -8,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.constant.GridDirection
 import org.jellyfin.androidtv.constant.ImageType
 import org.jellyfin.androidtv.constant.PosterSize
@@ -16,7 +18,6 @@ import org.jellyfin.androidtv.data.repository.MultiServerRepository
 import org.jellyfin.androidtv.preference.LibraryPreferences
 import org.jellyfin.androidtv.preference.PreferencesRepository
 import org.jellyfin.androidtv.preference.UserPreferences
-import org.jellyfin.androidtv.util.Utils
 import org.jellyfin.androidtv.util.sdk.ApiClientFactory
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.ApiClientException
@@ -26,12 +27,24 @@ import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CollectionType
 import org.jellyfin.sdk.model.api.ItemFilter
 import org.jellyfin.sdk.model.api.ItemSortBy
+import org.jellyfin.sdk.model.api.SeriesStatus
 import org.jellyfin.sdk.model.api.SortOrder
 import timber.log.Timber
 import java.util.UUID
 
+enum class SeriesStatusFilter(@StringRes val labelRes: Int) {
+	ALL(R.string.lbl_all_items),
+	CONTINUING(R.string.lbl__continuing_title),
+	ENDED(R.string.lbl_ended_title)
+}
+enum class PlayedStatusFilter(@StringRes val labelRes: Int) {
+	ALL(R.string.lbl_all_items),
+	WATCHED(R.string.lbl_watched),
+	UNWATCHED(R.string.lbl_unwatched)
+}
+
 data class SortOption(
-	val name: String,
+	@StringRes val nameRes: Int,
 	val sortBy: ItemSortBy,
 	val sortOrder: SortOrder,
 )
@@ -42,9 +55,10 @@ data class LibraryBrowseUiState(
 	val collectionType: CollectionType? = null,
 	val items: List<BaseItemDto> = emptyList(),
 	val totalItems: Int = 0,
-	val currentSortOption: SortOption = SortOption("Name", ItemSortBy.SORT_NAME, SortOrder.ASCENDING),
+	val currentSortOption: SortOption = SortOption(R.string.lbl_name, ItemSortBy.SORT_NAME, SortOrder.ASCENDING),
 	val filterFavorites: Boolean = false,
-	val filterUnwatched: Boolean = false,
+	val filterPlayed: PlayedStatusFilter = PlayedStatusFilter.ALL,
+	val filterSeriesStatus: SeriesStatusFilter = SeriesStatusFilter.ALL,
 	val startLetter: String? = null,
 	val hasMoreItems: Boolean = false,
 	val focusedItem: BaseItemDto? = null,
@@ -87,19 +101,19 @@ class LibraryBrowseViewModel(
 
 	val sortOptions: List<SortOption> by lazy {
 		buildList {
-			add(SortOption("Name", ItemSortBy.SORT_NAME, SortOrder.ASCENDING))
-			add(SortOption("Date Added", ItemSortBy.DATE_CREATED, SortOrder.DESCENDING))
-			add(SortOption("Premiere Date", ItemSortBy.PREMIERE_DATE, SortOrder.DESCENDING))
-			add(SortOption("Rating", ItemSortBy.OFFICIAL_RATING, SortOrder.ASCENDING))
-			add(SortOption("Community Rating", ItemSortBy.COMMUNITY_RATING, SortOrder.DESCENDING))
-			add(SortOption("Critic Rating", ItemSortBy.CRITIC_RATING, SortOrder.DESCENDING))
+			add(SortOption(R.string.lbl_name, ItemSortBy.SORT_NAME, SortOrder.ASCENDING))
+			add(SortOption(R.string.lbl_date_added, ItemSortBy.DATE_CREATED, SortOrder.DESCENDING))
+			add(SortOption(R.string.lbl_premier_date, ItemSortBy.PREMIERE_DATE, SortOrder.DESCENDING))
+			add(SortOption(R.string.lbl_rating, ItemSortBy.OFFICIAL_RATING, SortOrder.ASCENDING))
+			add(SortOption(R.string.lbl_community_rating, ItemSortBy.COMMUNITY_RATING, SortOrder.DESCENDING))
+			add(SortOption(R.string.lbl_critic_rating, ItemSortBy.CRITIC_RATING, SortOrder.DESCENDING))
 			if (folder?.collectionType == CollectionType.TVSHOWS) {
-				add(SortOption("Last Played", ItemSortBy.SERIES_DATE_PLAYED, SortOrder.DESCENDING))
+				add(SortOption(R.string.lbl_last_played, ItemSortBy.SERIES_DATE_PLAYED, SortOrder.DESCENDING))
 			} else {
-				add(SortOption("Last Played", ItemSortBy.DATE_PLAYED, SortOrder.DESCENDING))
+				add(SortOption(R.string.lbl_last_played, ItemSortBy.DATE_PLAYED, SortOrder.DESCENDING))
 			}
 			if (folder?.collectionType == CollectionType.MOVIES) {
-				add(SortOption("Runtime", ItemSortBy.RUNTIME, SortOrder.ASCENDING))
+				add(SortOption(R.string.lbl_runtime, ItemSortBy.RUNTIME, SortOrder.ASCENDING))
 			}
 		}
 	}
@@ -133,13 +147,14 @@ class LibraryBrowseViewModel(
 			val savedSort = libraryPreferences?.get(LibraryPreferences.sortBy)
 			val savedOrder = libraryPreferences?.get(LibraryPreferences.sortOrder)
 			val savedFavorites = libraryPreferences?.get(LibraryPreferences.filterFavoritesOnly) ?: false
-			val savedUnwatched = libraryPreferences?.get(LibraryPreferences.filterUnwatchedOnly) ?: false
+			val savedPlayed = libraryPreferences?.get(LibraryPreferences.filterPlayedStatus) ?: PlayedStatusFilter.ALL
+			val savedSeries = libraryPreferences?.get(LibraryPreferences.filterSeriesStatus) ?: SeriesStatusFilter.ALL
 
 			val initialSort = if (savedSort != null && savedOrder != null) {
 				sortOptions.find { it.sortBy == savedSort }?.copy(sortOrder = savedOrder)
-					?: SortOption("Name", ItemSortBy.SORT_NAME, SortOrder.ASCENDING)
+					?: SortOption(R.string.lbl_name, ItemSortBy.SORT_NAME, SortOrder.ASCENDING)
 			} else {
-				SortOption("Name", ItemSortBy.SORT_NAME, SortOrder.ASCENDING)
+				SortOption(R.string.lbl_name, ItemSortBy.SORT_NAME, SortOrder.ASCENDING)
 			}
 
 			val savedPosterSize = libraryPreferences?.get(LibraryPreferences.posterSize) ?: PosterSize.MED
@@ -149,7 +164,8 @@ class LibraryBrowseViewModel(
 			_uiState.value = _uiState.value.copy(
 				currentSortOption = initialSort,
 				filterFavorites = savedFavorites,
-				filterUnwatched = savedUnwatched,
+				filterPlayed = savedPlayed,
+				filterSeriesStatus = savedSeries,
 				posterSize = savedPosterSize,
 				imageType = savedImageType,
 				gridDirection = savedGridDirection,
@@ -186,7 +202,7 @@ class LibraryBrowseViewModel(
 			genreName = genreName,
 			displayPreferencesId = displayPreferencesId,
 			parentItemId = parentItemId,
-			currentSortOption = SortOption("Name", ItemSortBy.SORT_NAME, SortOrder.ASCENDING),
+			currentSortOption = SortOption(R.string.lbl_name, ItemSortBy.SORT_NAME, SortOrder.ASCENDING),
 		)
 
 		if (displayPreferencesId != null) {
@@ -235,10 +251,16 @@ class LibraryBrowseViewModel(
 		loadItems(reset = true)
 	}
 
-	fun toggleUnwatched() {
-		_uiState.value = _uiState.value.copy(filterUnwatched = !_uiState.value.filterUnwatched)
+	fun setPlayedFilter(filter: PlayedStatusFilter) {
+		_uiState.value = _uiState.value.copy(filterPlayed = filter)
 		savePreferences()
 		loadItems(reset = true)
+	}
+
+	fun setSeriesStatusFilter(filter: SeriesStatusFilter) {
+		_uiState.value = _uiState.value.copy(filterSeriesStatus = filter)
+		loadItems(reset = true)
+		savePreferences()
 	}
 
 	fun setStartLetter(letter: String?) {
@@ -282,7 +304,8 @@ class LibraryBrowseViewModel(
 		val prefs = libraryPreferences ?: return
 		viewModelScope.launch {
 			prefs.set(LibraryPreferences.filterFavoritesOnly, _uiState.value.filterFavorites)
-			prefs.set(LibraryPreferences.filterUnwatchedOnly, _uiState.value.filterUnwatched)
+			prefs.set(LibraryPreferences.filterPlayedStatus, _uiState.value.filterPlayed)
+			prefs.set(LibraryPreferences.filterSeriesStatus, _uiState.value.filterSeriesStatus)
 			prefs.set(LibraryPreferences.sortBy, _uiState.value.currentSortOption.sortBy)
 			prefs.set(LibraryPreferences.sortOrder, _uiState.value.currentSortOption.sortOrder)
 			prefs.commit()
@@ -298,7 +321,7 @@ class LibraryBrowseViewModel(
 		viewModelScope.launch {
 			if (reset) {
 				currentPage = 0
-				_uiState.value = _uiState.value.copy(isLoading = true, items = emptyList())
+				_uiState.value = _uiState.value.copy(isLoading = true, items = emptyList(), focusedItem = null)
 			}
 			isLoadingMore = true
 
@@ -308,7 +331,11 @@ class LibraryBrowseViewModel(
 				// Build filters
 				val filters = buildSet {
 					if (state.filterFavorites) add(ItemFilter.IS_FAVORITE)
-					if (state.filterUnwatched) add(ItemFilter.IS_UNPLAYED)
+					when (state.filterPlayed) {
+						PlayedStatusFilter.WATCHED -> add(ItemFilter.IS_PLAYED)
+						PlayedStatusFilter.UNWATCHED -> add(ItemFilter.IS_UNPLAYED)
+						PlayedStatusFilter.ALL -> {} // no filter
+					}
 				}
 
 				val includeTypes: Set<BaseItemKind>?
@@ -359,6 +386,12 @@ class LibraryBrowseViewModel(
 					}
 				}
 
+				val seriesStatus = when (state.filterSeriesStatus) {
+					SeriesStatusFilter.CONTINUING -> setOf(SeriesStatus.CONTINUING)
+					SeriesStatusFilter.ENDED -> setOf(SeriesStatus.ENDED)
+					else -> null
+				}
+
 				val response = withContext(Dispatchers.IO) {
 					effectiveApi.itemsApi.getItems(
 						parentId = parentId,
@@ -371,6 +404,7 @@ class LibraryBrowseViewModel(
 						sortBy = setOf(state.currentSortOption.sortBy),
 						sortOrder = setOf(state.currentSortOption.sortOrder),
 						filters = filters,
+						seriesStatus = seriesStatus,
 						startIndex = currentPage * pageSize,
 						limit = pageSize,
 						enableTotalRecordCount = true,
@@ -398,6 +432,7 @@ class LibraryBrowseViewModel(
 					items = allItems,
 					totalItems = totalItems,
 					hasMoreItems = allItems.size < totalItems,
+					focusedItem = if (reset) allItems.firstOrNull() else _uiState.value.focusedItem,
 				)
 			} catch (err: ApiClientException) {
 				Timber.e(err, "Failed to load library items")

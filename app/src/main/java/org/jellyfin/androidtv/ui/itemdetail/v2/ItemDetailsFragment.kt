@@ -2,7 +2,7 @@ package org.jellyfin.androidtv.ui.itemdetail.v2
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.graphics.Color as AndroidColor
+import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.LayoutInflater
@@ -13,14 +13,11 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.focusGroup
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,8 +31,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -43,22 +43,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -67,58 +67,55 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
-import androidx.compose.foundation.MutatePriority
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import coil3.compose.AsyncImage
 import coil3.toBitmap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jellyfin.androidtv.R
-import android.os.Build
 import org.jellyfin.androidtv.data.model.DataRefreshService
-import org.jellyfin.androidtv.ui.base.JellyfinTheme
-import org.jellyfin.androidtv.ui.base.Icon
-import org.jellyfin.androidtv.ui.base.Text
-import org.jellyfin.androidtv.ui.base.focusBorderColor
+import org.jellyfin.androidtv.preference.UserPreferences
+import org.jellyfin.androidtv.preference.UserSettingPreferences
+import org.jellyfin.androidtv.preference.constant.NavbarPosition
 import org.jellyfin.androidtv.ui.base.CircularProgressIndicator
+import org.jellyfin.androidtv.ui.base.JellyfinTheme
+import org.jellyfin.androidtv.ui.base.Text
+import org.jellyfin.androidtv.ui.browsing.composable.inforow.InfoRowColors
+import org.jellyfin.androidtv.ui.browsing.composable.inforow.InfoRowMultipleRatings
+import org.jellyfin.androidtv.ui.home.mediabar.TrailerResolver
 import org.jellyfin.androidtv.ui.navigation.Destinations
 import org.jellyfin.androidtv.ui.navigation.NavigationRepository
 import org.jellyfin.androidtv.ui.playback.MediaManager
-import org.jellyfin.androidtv.ui.playback.PrePlaybackTrackSelector
-import org.jellyfin.androidtv.ui.playlist.showAddToPlaylistDialog
 import org.jellyfin.androidtv.ui.playback.PlaybackLauncher
+import org.jellyfin.androidtv.ui.playback.PrePlaybackTrackSelector
 import org.jellyfin.androidtv.ui.playback.ThemeMusicPlayer
+import org.jellyfin.androidtv.ui.playlist.showAddToPlaylistDialog
+import org.jellyfin.androidtv.ui.shared.toolbar.LeftSidebarNavigation
+import org.jellyfin.androidtv.ui.shared.toolbar.MainToolbar
+import org.jellyfin.androidtv.ui.shared.toolbar.MainToolbarActiveButton
+import org.jellyfin.androidtv.util.BitmapBlur
 import org.jellyfin.androidtv.util.PlaybackHelper
 import org.jellyfin.androidtv.util.TimeUtils
-import org.jellyfin.androidtv.util.apiclient.Response
 import org.jellyfin.androidtv.util.Utils
+import org.jellyfin.androidtv.util.apiclient.Response
 import org.jellyfin.androidtv.util.apiclient.getLogoImage
 import org.jellyfin.androidtv.util.apiclient.getUrl
 import org.jellyfin.androidtv.util.apiclient.itemBackdropImages
 import org.jellyfin.androidtv.util.apiclient.itemImages
 import org.jellyfin.androidtv.util.apiclient.parentBackdropImages
 import org.jellyfin.androidtv.util.apiclient.seriesPrimaryImage
-import org.jellyfin.androidtv.util.sdk.compat.canResume
 import org.jellyfin.androidtv.util.sdk.TrailerUtils.getExternalTrailerIntent
 import org.jellyfin.androidtv.util.sdk.TrailerUtils.hasPlayableTrailers
-import org.jellyfin.androidtv.ui.home.mediabar.TrailerResolver
-import org.jellyfin.androidtv.ui.browsing.composable.inforow.InfoRowMultipleRatings
-import org.jellyfin.androidtv.ui.shared.toolbar.LeftSidebarNavigation
-import org.jellyfin.androidtv.ui.shared.toolbar.MainToolbar
-import org.jellyfin.androidtv.ui.shared.toolbar.MainToolbarActiveButton
-import org.jellyfin.androidtv.preference.UserPreferences
-import org.jellyfin.androidtv.preference.UserSettingPreferences
-import org.jellyfin.androidtv.preference.constant.NavbarPosition
-import org.jellyfin.androidtv.util.BitmapBlur
-import org.koin.compose.koinInject
+import org.jellyfin.androidtv.util.sdk.compat.canResume
 import org.jellyfin.sdk.api.client.exception.ApiClientException
 import org.jellyfin.sdk.api.client.extensions.imageApi
 import org.jellyfin.sdk.api.client.extensions.libraryApi
-import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -126,10 +123,9 @@ import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.MediaStreamType
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.UUID
+import android.graphics.Color as AndroidColor
 
 class ItemDetailsFragment : Fragment() {
 
@@ -915,66 +911,91 @@ class ItemDetailsFragment : Fragment() {
 		Row(
 			verticalAlignment = Alignment.CenterVertically,
 			modifier = Modifier.fillMaxWidth(),
-			horizontalArrangement = Arrangement.spacedBy(10.dp),
+			horizontalArrangement = Arrangement.spacedBy(2.dp),
 		) {
 			Row(
 				verticalAlignment = Alignment.CenterVertically,
 				horizontalArrangement = Arrangement.spacedBy(0.dp),
 			) {
-				var hasItem = false
+				val metadataItems = buildList<@Composable () -> Unit> {
+					// Year
+					item.productionYear?.let { add { InfoItemText(text = it.toString()) } }
 
-				item.productionYear?.let { year ->
-					InfoItemText(text = year.toString())
-					hasItem = true
+					// Runtime + Ends At (movies only)
+					if (!isSeries) {
+						item.runTimeTicks?.let {
+							add { RuntimeInfo(it) }
+							add { InfoItemText(
+									text = stringResource(
+										R.string.lbl_playback_control_ends,
+										getEndsAt(it)
+									)
+								)
+							}
+						}
+					}
+
+					// Series-specific: Season count + status badge
+					if (isSeries) {
+						// Season count
+						val seasonCount = item.childCount ?: 0
+						if (seasonCount > 0) {
+							add {
+								InfoItemText(
+									text = pluralStringResource(
+										R.plurals.season_count,
+										seasonCount,
+										seasonCount
+									)
+								)
+							}
+						}
+
+						// Status badge
+						item.status?.lowercase()?.let { status ->
+							if (status == "continuing" || status == "ended") {
+								val labelRes = if (status == "continuing")
+									R.string.lbl__continuing
+								else
+									R.string.lbl_ended
+
+								val bgColor = if (status == "continuing")
+									InfoRowColors.Green.first
+								else
+									InfoRowColors.Red.first
+
+								add {
+									InfoItemBadge(
+										text = stringResource(labelRes),
+										bgColor = bgColor,
+										color = Color.White
+									)
+								}
+							}
+						}
+					}
+
+					// Rating
+					item.officialRating?.let { rating ->
+						add { InfoItemBadge(text = rating) }
+					}
 				}
-
-				item.officialRating?.let { rating ->
-					if (hasItem) InfoItemSeparator()
-					InfoItemText(text = rating)
-					hasItem = true
-				}
-
-				if (!isSeries) {
-					item.runTimeTicks?.let { ticks ->
-						if (hasItem) InfoItemSeparator()
-						InfoItemText(text = formatDuration(ticks))
-						hasItem = true
+				metadataItems.forEachIndexed { index, content ->
+					content()
+					if (index < metadataItems.size - 1) {
 						InfoItemSeparator()
-						InfoItemText(text = getEndsAt(ticks))
 					}
 				}
-
-				if (isSeries) {
-					val seasonCount = item.childCount ?: 0
-					if (seasonCount > 0) {
-						if (hasItem) InfoItemSeparator()
-						InfoItemText(text = "$seasonCount Season${if (seasonCount != 1) "s" else ""}")
-						hasItem = true
-					}
-				}
-
-				item.communityRating?.let { rating ->
-					if (hasItem) InfoItemSeparator()
-					Row(verticalAlignment = Alignment.CenterVertically) {
-						Icon(
-							imageVector = ImageVector.vectorResource(R.drawable.ic_star),
-							contentDescription = null,
-							modifier = Modifier.height(14.dp).width(14.dp),
-							tint = Color(0xFFFFC107),
-						)
-						Spacer(modifier = Modifier.width(3.dp))
-						InfoItemText(text = String.format("%.1f", rating))
+				if (badges.isNotEmpty()) {
+					if (metadataItems.isNotEmpty()) InfoItemSeparator()
+					Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+						badges.forEach { badge ->
+							MediaBadgeChip(badge = badge)
+						}
 					}
 				}
 			}
 
-			if (badges.isNotEmpty()) {
-				Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-					badges.forEach { badge ->
-						MediaBadgeChip(badge = badge)
-					}
-				}
-			}
 
 		}
 	}

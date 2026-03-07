@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,7 +58,12 @@ import org.jellyfin.androidtv.ui.base.Icon
 import org.jellyfin.androidtv.ui.base.Seekbar
 import org.jellyfin.androidtv.ui.base.Text
 import org.jellyfin.androidtv.ui.base.focusBorderColor
+import org.jellyfin.androidtv.ui.browsing.composable.inforow.InfoRowColors
 import org.jellyfin.androidtv.ui.browsing.composable.inforow.InfoRowCompactRatings
+import org.jellyfin.androidtv.ui.itemdetail.v2.InfoItemBadge
+import org.jellyfin.androidtv.ui.itemdetail.v2.InfoItemSeparator
+import org.jellyfin.androidtv.ui.itemdetail.v2.InfoItemText
+import org.jellyfin.androidtv.ui.itemdetail.v2.RuntimeInfo
 import org.jellyfin.androidtv.util.TimeUtils
 import org.jellyfin.design.Tokens
 import org.jellyfin.sdk.model.api.BaseItemDto
@@ -99,7 +105,11 @@ private fun getTypeBadgeColor(kind: BaseItemKind?): Color = when (kind) {
  */
 fun buildMetadataString(item: BaseItemDto, context: android.content.Context? = null): String {
 	val parts = mutableListOf<String>()
+	item.communityRating?.let { parts.add("★ ${String.format("%.1f", it)}") }
 	item.productionYear?.let { parts.add(it.toString()) }
+	if (item.type == BaseItemKind.SERIES) {
+		item.status?.let { parts.add(it) }
+	}
 	item.officialRating?.let { if (it.isNotBlank()) parts.add(it) }
 	if (item.type == BaseItemKind.MOVIE) {
 		item.runTimeTicks?.let { ticks ->
@@ -115,7 +125,6 @@ fun buildMetadataString(item: BaseItemDto, context: android.content.Context? = n
 			}
 		}
 	}
-	item.communityRating?.let { parts.add("★ ${String.format("%.1f", it)}") }
 	return parts.joinToString("  ")
 }
 
@@ -430,21 +439,45 @@ fun FocusedItemHud(
 			// Metadata + compact ratings on the same row
 			Row(
 				verticalAlignment = Alignment.CenterVertically,
-				horizontalArrangement = Arrangement.spacedBy(12.dp),
 			) {
-				val context = androidx.compose.ui.platform.LocalContext.current
-				val metaLine = buildMetadataString(item, context)
-				if (metaLine.isNotEmpty()) {
-					Text(
-						text = metaLine,
-						fontSize = 14.sp,
-						fontWeight = FontWeight.Normal,
-						color = Color.White.copy(alpha = 0.6f),
-						maxLines = 1,
-					)
+				val metadataItems = buildList<@Composable () -> Unit> {
+					item.productionYear?.let { add{ InfoItemText(text = it.toString()) } }
+
+					if (item.type != BaseItemKind.SERIES) {
+						item.runTimeTicks?.let { add { RuntimeInfo(it) } }
+					}
+
+					if (item.type == BaseItemKind.SERIES) {
+						val status = item.status?.lowercase()
+						if (status == "continuing" || status == "ended") {
+							val labelRes = if (status == "continuing") R.string.lbl__continuing_title else R.string.lbl_ended_title
+							val color = if (status == "continuing") InfoRowColors.Green.first else InfoRowColors.Red.first
+							add {
+								InfoItemBadge(
+									text = stringResource(labelRes),
+									bgColor = color,
+									color = Color.White,
+								)
+							}
+						}
+					}
+
+					item.officialRating?.let { add { InfoItemBadge(text = it) } }
 				}
 
-				InfoRowCompactRatings(item = item)
+				metadataItems.forEachIndexed { index, content ->
+					content()
+					if (index < metadataItems.size - 1) {
+						InfoItemSeparator()
+					}
+				}
+
+				InfoRowCompactRatings(
+					item = item,
+					leadingContent = {
+						if (metadataItems.isNotEmpty()) InfoItemSeparator()
+					}
+				)
 			}
 		}
 	}
@@ -481,7 +514,7 @@ fun LibraryStatusBar(
 
 /**
  * Glass-morphism filter/sort dialog matching TrackSelectorDialog style.
- * Shows sort options as radio-selectable rows, plus toggle rows for favorites / unwatched.
+ * Shows sort options  and played/unplayed as radio-selectable rows, plus toggle row for favorites.
  */
 @Composable
 fun FilterSortDialog(
@@ -489,11 +522,14 @@ fun FilterSortDialog(
 	sortOptions: List<SortOption>,
 	currentSort: SortOption,
 	filterFavorites: Boolean,
-	filterUnwatched: Boolean,
-	showUnwatchedToggle: Boolean,
+	filterPlayedStatus: PlayedStatusFilter,
+	filterSeriesStatus: SeriesStatusFilter,
+	showPlayedStatus: Boolean,
+	showSeriesStatus: Boolean,
 	onSortSelected: (SortOption) -> Unit,
 	onToggleFavorites: () -> Unit,
-	onToggleUnwatched: () -> Unit,
+	onPlayedStatusSelected: (PlayedStatusFilter) -> Unit,
+	onSeriesStatusSelected: (SeriesStatusFilter) -> Unit,
 	onDismiss: () -> Unit,
 ) {
 	val initialFocusRequester = remember { FocusRequester() }
@@ -535,118 +571,121 @@ fun FilterSortDialog(
 
 				Spacer(modifier = Modifier.height(4.dp))
 
-				// Section: Sort
-				Text(
-					text = "Sort By",
-					fontSize = 13.sp,
-					fontWeight = FontWeight.W500,
-					color = Color.White.copy(alpha = 0.45f),
-					modifier = Modifier
-						.padding(horizontal = 24.dp, vertical = 8.dp),
-				)
+				LazyColumn(
+					modifier = Modifier.weight(1f, fill = false),
+					contentPadding = PaddingValues(bottom = 8.dp)
+				) {
+					// Sort section
+					item {
+						Text(
+							text = stringResource(R.string.lbl_sort_by),
+							fontSize = 13.sp,
+							fontWeight = FontWeight.W500,
+							color = Color.White.copy(alpha = 0.45f),
+							modifier = Modifier
+								.padding(horizontal = 24.dp, vertical = 8.dp),
+						)
+					}
 
-				LazyColumn {
 					itemsIndexed(sortOptions) { index, option ->
-						val interactionSource = remember { MutableInteractionSource() }
-						val isFocused by interactionSource.collectIsFocusedAsState()
 						val isSelected = option.sortBy == currentSort.sortBy
 
-						val focusModifier = if (index == sortOptions.indexOfFirst { it.sortBy == currentSort.sortBy }
-								.coerceIn(0, sortOptions.lastIndex)
-						) {
-							Modifier.focusRequester(initialFocusRequester)
-						} else {
-							Modifier
+						val focusModifier =
+							if (index == sortOptions.indexOfFirst { it.sortBy == currentSort.sortBy }
+									.coerceIn(0, sortOptions.lastIndex)
+							) Modifier.focusRequester(initialFocusRequester)
+							else Modifier
+
+						FilterRadioRow(
+							label = stringResource(option.nameRes),
+							isSelected = isSelected,
+							onClick = { onSortSelected(option) },
+							modifier = focusModifier
+						)
+					}
+
+					// Divider after sort
+					item {
+						Box(
+							modifier = Modifier
+								.fillMaxWidth()
+								.height(1.dp)
+								.padding(horizontal = 24.dp)
+								.background(Color.White.copy(alpha = 0.06f)),
+						)
+						Spacer(modifier = Modifier.height(4.dp))
+					}
+
+					// Filters header + favorites toggle
+					item {
+						Text(
+							text = stringResource(R.string.filters),
+							fontSize = 13.sp,
+							fontWeight = FontWeight.W500,
+							color = Color.White.copy(alpha = 0.45f),
+							modifier = Modifier
+								.padding(horizontal = 24.dp, vertical = 8.dp),
+						)
+
+						FilterToggleRow(
+							label = stringResource(R.string.lbl_favorites),
+							isActive = filterFavorites,
+							onClick = onToggleFavorites,
+						)
+
+						Spacer(modifier = Modifier.height(8.dp))
+					}
+
+					// Played status section
+					if (showPlayedStatus) {
+						items(PlayedStatusFilter.entries.size) { index ->
+							val filter = PlayedStatusFilter.entries[index]
+							val isSelected = filter == filterPlayedStatus
+
+							FilterRadioRow(
+								label = stringResource(filter.labelRes),
+								isSelected = isSelected,
+								onClick = { onPlayedStatusSelected(filter) }
+							)
 						}
 
-						Row(
-							modifier = focusModifier
-								.fillMaxWidth()
-								.clickable(
-									interactionSource = interactionSource,
-									indication = null,
-								) { onSortSelected(option) }
-								.focusable(interactionSource = interactionSource)
-								.background(
-									if (isFocused) Color.White.copy(alpha = 0.12f) else Color.Transparent,
-								)
-								.padding(horizontal = 24.dp, vertical = 12.dp),
-							verticalAlignment = Alignment.CenterVertically,
-						) {
-							// Radio circle
+						// Divider only if this section is shown
+						item {
 							Box(
 								modifier = Modifier
-									.size(18.dp)
-									.border(
-										width = 2.dp,
-										color = if (isSelected) JellyfinBlue else Color.White.copy(alpha = 0.3f),
-										shape = CircleShape,
-									),
-								contentAlignment = Alignment.Center,
-							) {
-								if (isSelected) {
-									Box(
-										modifier = Modifier
-											.size(10.dp)
-											.background(JellyfinBlue, CircleShape),
-									)
-								}
-							}
+									.fillMaxWidth()
+									.height(1.dp)
+									.padding(horizontal = 24.dp)
+									.background(Color.White.copy(alpha = 0.06f)),
+							)
+							Spacer(modifier = Modifier.height(4.dp))
+						}
+					}
 
-							Spacer(modifier = Modifier.width(16.dp))
-
+					// Series status section
+					if (showSeriesStatus) {
+						item {
 							Text(
-								text = option.name,
-								fontSize = 16.sp,
-								fontWeight = if (isSelected) FontWeight.W600 else FontWeight.W400,
-								color = when {
-									isSelected -> JellyfinBlue
-									isFocused -> Color.White
-									else -> Color.White.copy(alpha = 0.8f)
-								},
-								maxLines = 1,
-								overflow = TextOverflow.Ellipsis,
-								modifier = Modifier.weight(1f),
+								text = stringResource(R.string.lbl_status_title),
+								fontSize = 13.sp,
+								fontWeight = FontWeight.W500,
+								color = Color.White.copy(alpha = 0.45f),
+								modifier = Modifier
+									.padding(horizontal = 24.dp, vertical = 8.dp),
+							)
+						}
+
+						items(SeriesStatusFilter.entries.size) { index ->
+							val filter = SeriesStatusFilter.entries[index]
+							val isSelected = filter == filterSeriesStatus
+
+							FilterRadioRow(
+								label = stringResource(filter.labelRes),
+								isSelected = isSelected,
+								onClick = { onSeriesStatusSelected(filter) }
 							)
 						}
 					}
-				}
-
-				// Divider
-				Box(
-					modifier = Modifier
-						.fillMaxWidth()
-						.height(1.dp)
-						.padding(horizontal = 24.dp)
-						.background(Color.White.copy(alpha = 0.06f)),
-				)
-
-				Spacer(modifier = Modifier.height(4.dp))
-
-				// Section: Filters
-				Text(
-					text = "Filters",
-					fontSize = 13.sp,
-					fontWeight = FontWeight.W500,
-					color = Color.White.copy(alpha = 0.45f),
-					modifier = Modifier
-						.padding(horizontal = 24.dp, vertical = 8.dp),
-				)
-
-				// Favorites toggle
-				FilterToggleRow(
-					label = "Favorites Only",
-					isActive = filterFavorites,
-					onClick = onToggleFavorites,
-				)
-
-				// Unwatched toggle
-				if (showUnwatchedToggle) {
-					FilterToggleRow(
-						label = "Unwatched Only",
-						isActive = filterUnwatched,
-						onClick = onToggleUnwatched,
-					)
 				}
 			}
 		}
@@ -654,6 +693,71 @@ fun FilterSortDialog(
 		LaunchedEffect(Unit) {
 			initialFocusRequester.requestFocus()
 		}
+	}
+}
+
+/**
+ * A radio-selectable row inside the filter dialog.
+ */
+@Composable
+private fun FilterRadioRow(
+	label: String,
+	isSelected: Boolean,
+	onClick: () -> Unit,
+	modifier: Modifier = Modifier,
+) {
+	val interactionSource = remember { MutableInteractionSource() }
+	val isFocused by interactionSource.collectIsFocusedAsState()
+
+	Row(
+		modifier = modifier
+			.fillMaxWidth()
+			.clickable(
+				interactionSource = interactionSource,
+				indication = null,
+			) { onClick() }
+			.focusable(interactionSource = interactionSource)
+			.background(
+				if (isFocused) Color.White.copy(alpha = 0.12f) else Color.Transparent,
+			)
+			.padding(horizontal = 24.dp, vertical = 12.dp),
+		verticalAlignment = Alignment.CenterVertically,
+	) {
+		// Radio circle
+		Box(
+			modifier = Modifier
+				.size(18.dp)
+				.border(
+					width = 2.dp,
+					color = if (isSelected) JellyfinBlue else Color.White.copy(alpha = 0.3f),
+					shape = CircleShape,
+				),
+			contentAlignment = Alignment.Center,
+		) {
+			if (isSelected) {
+				Box(
+					modifier = Modifier
+						.size(10.dp)
+						.background(JellyfinBlue, CircleShape),
+				)
+			}
+		}
+
+		Spacer(modifier = Modifier.width(16.dp))
+
+		Text(
+			text = label,
+			fontSize = 16.sp,
+			fontWeight = if (isSelected) FontWeight.W600 else FontWeight.W400,
+			color = when {
+				isSelected -> JellyfinBlue
+				isFocused -> Color.White
+				else -> Color.White.copy(alpha = 0.8f)
+			},
+			maxLines = 1,
+			overflow = TextOverflow.Ellipsis,
+			modifier = Modifier.weight(1f),
+		)
 	}
 }
 
@@ -716,6 +820,9 @@ private fun FilterToggleRow(
 				isFocused -> Color.White
 				else -> Color.White.copy(alpha = 0.8f)
 			},
+			maxLines = 1,
+			overflow = TextOverflow.Ellipsis,
+			modifier = Modifier.weight(1f),
 		)
 	}
 }

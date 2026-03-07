@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -168,7 +167,8 @@ class LibraryBrowseFragment : Fragment() {
 					uiState = uiState,
 					onSortSelected = { viewModel.setSortOption(it) },
 					onToggleFavorites = { viewModel.toggleFavorites() },
-					onToggleUnwatched = { viewModel.toggleUnwatched() },
+					onPlayedStatusSelected = { viewModel.setPlayedFilter(it) },
+					onSeriesStatusSelected = { viewModel.setSeriesStatusFilter(it) },
 					onLetterSelected = { viewModel.setStartLetter(it) },
 					onSettingsClicked = { settingsVisible = true },
 					onHomeClicked = { navigationRepository.navigate(Destinations.home) },
@@ -252,7 +252,8 @@ class LibraryBrowseFragment : Fragment() {
 		uiState: LibraryBrowseUiState,
 		onSortSelected: (SortOption) -> Unit,
 		onToggleFavorites: () -> Unit,
-		onToggleUnwatched: () -> Unit,
+		onPlayedStatusSelected: (PlayedStatusFilter) -> Unit,
+		onSeriesStatusSelected: (SeriesStatusFilter) -> Unit,
 		onLetterSelected: (String?) -> Unit,
 		onSettingsClicked: () -> Unit,
 		onHomeClicked: () -> Unit,
@@ -309,7 +310,8 @@ class LibraryBrowseFragment : Fragment() {
 					uiState = uiState,
 					onSortSelected = onSortSelected,
 					onToggleFavorites = onToggleFavorites,
-					onToggleUnwatched = onToggleUnwatched,
+					onPlayedStatusSelected = onPlayedStatusSelected,
+					onSeriesStatusSelected = onSeriesStatusSelected,
 					onSettingsClicked = onSettingsClicked,
 					onHomeClicked = onHomeClicked,
 				)
@@ -332,7 +334,8 @@ class LibraryBrowseFragment : Fragment() {
 		uiState: LibraryBrowseUiState,
 		onSortSelected: (SortOption) -> Unit,
 		onToggleFavorites: () -> Unit,
-		onToggleUnwatched: () -> Unit,
+		onPlayedStatusSelected: (PlayedStatusFilter) -> Unit,
+		onSeriesStatusSelected: (SeriesStatusFilter) -> Unit,
 		onSettingsClicked: () -> Unit,
 		onHomeClicked: () -> Unit,
 	) {
@@ -363,20 +366,22 @@ class LibraryBrowseFragment : Fragment() {
 				onClick = onSettingsClicked,
 			)
 		}
-
 		// Glass-morphism filter/sort dialog
 		if (showFilterDialog) {
 			FilterSortDialog(
-				title = "Sort & Filter",
+				title = stringResource(R.string.lbl_sort_and_filter),
 				sortOptions = viewModel.sortOptions,
 				currentSort = uiState.currentSortOption,
 				filterFavorites = uiState.filterFavorites,
-				filterUnwatched = uiState.filterUnwatched,
-				showUnwatchedToggle = uiState.collectionType == CollectionType.MOVIES ||
+				filterPlayedStatus = uiState.filterPlayed,
+				filterSeriesStatus = uiState.filterSeriesStatus,
+				showPlayedStatus = uiState.collectionType == CollectionType.MOVIES ||
 					uiState.collectionType == CollectionType.TVSHOWS,
+				showSeriesStatus = uiState.collectionType == CollectionType.TVSHOWS,
 				onSortSelected = onSortSelected,
 				onToggleFavorites = onToggleFavorites,
-				onToggleUnwatched = onToggleUnwatched,
+				onPlayedStatusSelected = onPlayedStatusSelected,
+				onSeriesStatusSelected = onSeriesStatusSelected,
 				onDismiss = { showFilterDialog = false },
 			)
 		}
@@ -506,17 +511,22 @@ class LibraryBrowseFragment : Fragment() {
 	private fun buildStatusText(uiState: LibraryBrowseUiState): String {
 		val parts = mutableListOf<String>()
 		parts.add(stringResource(R.string.lbl_showing))
-		if (!uiState.filterFavorites && !uiState.filterUnwatched) {
-			parts.add(stringResource(R.string.lbl_all_items))
+		if (!uiState.filterFavorites && uiState.filterPlayed == PlayedStatusFilter.ALL && uiState.filterSeriesStatus == SeriesStatusFilter.ALL) {
+			parts.add(stringResource(R.string.lbl_all_items).lowercase())
 		} else {
-			if (uiState.filterUnwatched) parts.add(stringResource(R.string.lbl_unwatched))
 			if (uiState.filterFavorites) parts.add(stringResource(R.string.lbl_favorites))
+			if (uiState.filterPlayed != PlayedStatusFilter.ALL) {
+				parts.add(stringResource(uiState.filterPlayed.labelRes))
+			}
+			if (uiState.filterSeriesStatus != SeriesStatusFilter.ALL) {
+				parts.add(stringResource(uiState.filterSeriesStatus.labelRes))
+			}
 		}
 		if (uiState.startLetter != null) {
 			parts.add("${stringResource(R.string.lbl_starting_with)} ${uiState.startLetter}")
 		}
 		parts.add("${stringResource(R.string.lbl_from)} '${uiState.libraryName}'")
-		parts.add("${stringResource(R.string.lbl_sorted_by)} ${uiState.currentSortOption.name}")
+		parts.add("${stringResource(R.string.lbl_sorted_by)} ${stringResource(uiState.currentSortOption.nameRes)}")
 		return parts.joinToString(" ")
 	}
 }
