@@ -232,11 +232,15 @@ private fun BaseRowItem.getDisplayConfig(imageType: ImageType, uniformAspect: Bo
 				aspectRatio = 1f,
 			)
 
-			BaseItemKind.PERSON,
-			BaseItemKind.MUSIC_ARTIST -> base.copy(
+			BaseItemKind.PERSON -> base.copy(
 				iconRes = R.drawable.ic_user,
 				aspectRatio = 1f,
 				isCircular = true,
+			)
+
+			BaseItemKind.MUSIC_ARTIST -> base.copy(
+				iconRes = R.drawable.ic_user,
+				aspectRatio = 1f,
 			)
 
 			BaseItemKind.SEASON, BaseItemKind.SERIES -> base.copy(
