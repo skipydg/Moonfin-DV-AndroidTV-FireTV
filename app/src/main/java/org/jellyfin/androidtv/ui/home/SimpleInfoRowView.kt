@@ -144,81 +144,107 @@ class SimpleInfoRowView @JvmOverloads constructor(
 		val enableEpisodeRatings = userSettingPreferences[UserSettingPreferences.enableEpisodeRatings]
 
 		val starsRating = item.communityRating
-		if (starsRating != null) {
-			setItemText(index++, "⭐ ${String.format("%.1f", starsRating)}")
-		} else if (isEpisode) {
-			val starsIndex = index++
-			findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
-				try {
-					val seriesRating = tmdbRepository.getSeriesCommunityRating(item)
-					if (currentItemId == itemIdAtFetchTime && seriesRating != null) {
-						withContext(Dispatchers.Main) {
-							if (currentItemId == itemIdAtFetchTime) {
-								setItemText(starsIndex, "⭐ ${String.format("%.1f", seriesRating)}")
-							}
-						}
-					}
-				} catch (_: Exception) { }
-			}
-		}
-
-		item.criticRating?.let { critic ->
-			val scorePercent = critic.toInt()
-			val formattedRating = "${scorePercent}%"
-			val icon = RatingIconProvider.getIcon(apiClient.baseUrl, "tomatoes", scorePercent)
-			if (icon != null) {
-				setItemTextWithIcon(index++, formattedRating, icon)
-			} else {
-				setItemText(index++, formattedRating)
-			}
-		}
-
-		if (enableEpisodeRatings && isEpisode) {
-			val episodeRatingIndex = index++
-			findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
-				try {
-					val episodeRating = tmdbRepository.getEpisodeRating(item)
-					if (currentItemId == itemIdAtFetchTime && episodeRating != null) {
-						withContext(Dispatchers.Main) {
-							if (currentItemId == itemIdAtFetchTime) {
-								val formattedRating = "${(episodeRating * 10f).toInt()}%"
-								val icon = RatingIconProvider.getIcon(apiClient.baseUrl, "tmdb")
-								if (icon != null) setItemTextWithIcon(episodeRatingIndex, formattedRating, icon)
-							}
-						}
-					}
-				} catch (_: Exception) { }
-			}
-		}
 
 		if (enableAdditionalRatings) {
-			val mdbStartIndex = index
+			val ratingsStartIndex = index
 			findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
 				try {
 					val apiRatings = mdbListRepository.getRatings(item)
-					if (currentItemId == itemIdAtFetchTime && apiRatings != null) {
+					val episodeRating = if (enableEpisodeRatings && isEpisode) {
+						try { tmdbRepository.getEpisodeRating(item) } catch (_: Exception) { null }
+					} else null
+					val seriesRating = if (isEpisode && starsRating == null) {
+						try { tmdbRepository.getSeriesCommunityRating(item) } catch (_: Exception) { null }
+					} else null
+
+					if (currentItemId == itemIdAtFetchTime) {
 						withContext(Dispatchers.Main) {
 							if (currentItemId == itemIdAtFetchTime) {
-								var mdbIndex = mdbStartIndex
-								apiRatings.forEach { (source, value) ->
+								var rIndex = ratingsStartIndex
+
+								val displayStars = starsRating ?: seriesRating
+								if (displayStars != null) {
+									setItemText(rIndex++, "⭐ ${String.format("%.1f", displayStars)}")
+								}
+
+								apiRatings?.forEach { (source, value) ->
 									if (source == "tomatoes" && item.criticRating != null) return@forEach
 									if (isEpisode && enableEpisodeRatings && source == "tmdb") return@forEach
+									val formattedRating = formatRating(source, value)
+									val icon = RatingIconProvider.getIcon(apiClient.baseUrl, source, value.toInt())
+									if (icon != null) setItemTextWithIcon(rIndex, formattedRating, icon)
+									else setItemText(rIndex, formattedRating)
+									rIndex++
+								}
 
-									val displayValue = value
-
-									val formattedRating = formatRating(source, displayValue)
-									val icon = RatingIconProvider.getIcon(apiClient.baseUrl, source, displayValue.toInt())
-									if (icon != null) {
-										setItemTextWithIcon(mdbIndex, formattedRating, icon)
-									} else {
-										setItemText(mdbIndex, formattedRating)
+								if (apiRatings?.containsKey("tomatoes") != true) {
+									item.criticRating?.let { critic ->
+										val scorePercent = critic.toInt()
+										val formattedRating = "${scorePercent}%"
+										val icon = RatingIconProvider.getIcon(apiClient.baseUrl, "tomatoes", scorePercent)
+										if (icon != null) setItemTextWithIcon(rIndex, formattedRating, icon)
+										else setItemText(rIndex, formattedRating)
+										rIndex++
 									}
-									mdbIndex++
+								}
+
+								if (episodeRating != null) {
+									val formattedRating = "${(episodeRating * 10f).toInt()}%"
+									val icon = RatingIconProvider.getIcon(apiClient.baseUrl, "tmdb")
+									if (icon != null) setItemTextWithIcon(rIndex, formattedRating, icon)
+									rIndex++
 								}
 							}
 						}
 					}
 				} catch (_: Exception) { }
+			}
+		} else {
+			if (starsRating != null) {
+				setItemText(index++, "⭐ ${String.format("%.1f", starsRating)}")
+			} else if (isEpisode) {
+				val starsIndex = index++
+				findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+					try {
+						val seriesRating = tmdbRepository.getSeriesCommunityRating(item)
+						if (currentItemId == itemIdAtFetchTime && seriesRating != null) {
+							withContext(Dispatchers.Main) {
+								if (currentItemId == itemIdAtFetchTime) {
+									setItemText(starsIndex, "⭐ ${String.format("%.1f", seriesRating)}")
+								}
+							}
+						}
+					} catch (_: Exception) { }
+				}
+			}
+
+			item.criticRating?.let { critic ->
+				val scorePercent = critic.toInt()
+				val formattedRating = "${scorePercent}%"
+				val icon = RatingIconProvider.getIcon(apiClient.baseUrl, "tomatoes", scorePercent)
+				if (icon != null) {
+					setItemTextWithIcon(index++, formattedRating, icon)
+				} else {
+					setItemText(index++, formattedRating)
+				}
+			}
+
+			if (enableEpisodeRatings && isEpisode) {
+				val episodeRatingIndex = index++
+				findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+					try {
+						val episodeRating = tmdbRepository.getEpisodeRating(item)
+						if (currentItemId == itemIdAtFetchTime && episodeRating != null) {
+							withContext(Dispatchers.Main) {
+								if (currentItemId == itemIdAtFetchTime) {
+									val formattedRating = "${(episodeRating * 10f).toInt()}%"
+									val icon = RatingIconProvider.getIcon(apiClient.baseUrl, "tmdb")
+									if (icon != null) setItemTextWithIcon(episodeRatingIndex, formattedRating, icon)
+								}
+							}
+						}
+					} catch (_: Exception) { }
+				}
 			}
 		}
 	}

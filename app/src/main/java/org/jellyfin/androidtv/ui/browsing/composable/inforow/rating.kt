@@ -163,12 +163,8 @@ fun InfoRowMultipleRatings(item: BaseItemDto) {
 
 	val allRatings = remember(apiRatings, item.criticRating, item.communityRating, episodeRating, seriesCommunityRating) {
 		linkedMapOf<String, Float>().apply {
-			// move community rating in here to keep ratings grouped together
-			// use series rating as fallback for episodes
 			val communityRating = item.communityRating ?: seriesCommunityRating
 			communityRating?.let { put("community", it / 10f) }
-
-			episodeRating?.let { put("tmdb_episode", it / 10f) }
 
 			apiRatings?.forEach { (source, value) ->
 				val normalized = when (source) {
@@ -192,6 +188,8 @@ fun InfoRowMultipleRatings(item: BaseItemDto) {
 			if ("tomatoes" !in this) {
 				item.criticRating?.let { put("tomatoes", it / 100f) }
 			}
+
+			episodeRating?.let { put("tmdb_episode", it / 10f) }
 		}
 	}
 
@@ -301,7 +299,6 @@ fun InfoRowCompactRatings(item: BaseItemDto, leadingContent: @Composable () -> U
 
 	val allRatings = remember(apiRatings, item.criticRating, item.communityRating) {
 		linkedMapOf<String, Float>().apply {
-			// move community rating in here to keep ratings grouped together
 			item.communityRating?.let { put("community", it / 10f) }
 
 			apiRatings?.forEach { (source, value) ->
