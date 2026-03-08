@@ -419,12 +419,12 @@ private fun MediaBarRating(item: MediaBarSlideItem) {
 
 	val enableAdditionalRatings = userSettingPreferences[UserSettingPreferences.enableAdditionalRatings]
 
-	var apiRatings by remember { mutableStateOf<Map<String, Float>?>(null) }
+	var apiRatings by remember(item.itemId) { mutableStateOf<Map<String, Float>?>(null) }
 
 	val needsExternalRating = enableAdditionalRatings && 
 		(item.tmdbId != null || item.imdbId != null)
 
-	var isLoading by remember { mutableStateOf(needsExternalRating) }
+	var isLoading by remember(item.itemId) { mutableStateOf(needsExternalRating) }
 
 	if (needsExternalRating) {
 		LaunchedEffect(item.itemId) {
