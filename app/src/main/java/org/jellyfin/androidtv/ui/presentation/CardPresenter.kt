@@ -229,7 +229,7 @@ private fun BaseRowItem.getDisplayConfig(imageType: ImageType, uniformAspect: Bo
 		when (baseItem?.type) {
 			BaseItemKind.AUDIO, BaseItemKind.MUSIC_ALBUM -> base.copy(
 				iconRes = R.drawable.ic_music_album,
-				aspectRatio = if (uniformAspect || base.aspectRatio < 0.8f) 1f else base.aspectRatio,
+				aspectRatio = 1f,
 			)
 
 			BaseItemKind.PERSON,
