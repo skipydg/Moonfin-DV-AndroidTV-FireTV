@@ -142,7 +142,10 @@ class PluginSyncService(
 	 * Run full startup sync. Call after session is established and API client is configured.
 	 */
 	suspend fun syncOnStartup() = withContext(Dispatchers.IO) {
-		if (!userPreferences[UserPreferences.pluginSyncEnabled]) {
+		val syncEnabled = userPreferences[UserPreferences.pluginSyncEnabled]
+		val autoDetected = userPreferences[UserPreferences.pluginSyncAutoDetected]
+
+		if (!syncEnabled && autoDetected) {
 			Timber.d("$TAG: Plugin sync disabled, skipping")
 			unregisterChangeListeners()
 			return@withContext
@@ -156,6 +159,17 @@ class PluginSyncService(
 		}
 
 		serverAvailable = ping(baseUrl, token)
+
+		if (!syncEnabled && !autoDetected) {
+			if (!serverAvailable) {
+				Timber.d("$TAG: Auto-detect: plugin not found, staying disabled")
+				return@withContext
+			}
+			Timber.i("$TAG: Auto-detect: plugin found, enabling sync")
+			userPreferences[UserPreferences.pluginSyncEnabled] = true
+			snapshotPrefs.edit().clear().apply()
+		}
+
 		if (!serverAvailable) {
 			Timber.w("$TAG: Server plugin not reachable, skipping sync")
 			return@withContext
@@ -229,7 +243,6 @@ class PluginSyncService(
 	 * by local defaults.
 	 */
 	suspend fun initialSync() = withContext(Dispatchers.IO) {
-		// Clear snapshot so mergeThreeWay treats this as a first sync (server wins)
 		snapshotPrefs.edit().clear().apply()
 		Timber.i("$TAG: Snapshot cleared for initial server-wins sync")
 

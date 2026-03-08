@@ -60,7 +60,10 @@ fun SettingsPluginScreen() {
 				trailingContent = { Checkbox(checked = pluginSyncEnabled) },
 				onClick = {
 					pluginSyncEnabled = !pluginSyncEnabled
+					userPreferences[UserPreferences.pluginSyncAutoDetected] = true
 					if (pluginSyncEnabled) {
+						// Write directly — rememberPreference defers via LaunchedEffect
+						userPreferences[UserPreferences.pluginSyncEnabled] = true
 						coroutineScope.launch {
 							pluginSyncService.initialSync()
 							pluginSyncService.configureJellyseerrProxy()

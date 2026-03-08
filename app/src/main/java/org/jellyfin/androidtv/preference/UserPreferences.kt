@@ -54,6 +54,12 @@ class UserPreferences(context: Context) : SharedPreferenceStore(
 		 */
 		var pluginSyncEnabled = booleanPreference("pref_plugin_sync_enabled", false)
 
+		/**
+		 * Whether plugin auto-detection has been attempted.
+		 * Prevents repeated pings on every login when the plugin is not installed.
+		 */
+		var pluginSyncAutoDetected = booleanPreference("pref_plugin_sync_auto_detected", false)
+
 		/* Toolbar Customization */
 		/**
 		 * Show shuffle button in toolbar
