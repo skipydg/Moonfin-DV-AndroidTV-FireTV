@@ -22,6 +22,7 @@ import org.jellyfin.androidtv.preference.PreferencesRepository
 import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.util.sdk.ApiClientFactory
 import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.artistsApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -102,7 +103,6 @@ class LibraryBrowseViewModel(
 	private var isLoadingMore = false
 	private val pageSize = 100
 
-	// Genre mode fields
 	private var genreFilter: String? = null
 	private var includeType: String? = null
 	private var genreParentId: UUID? = null
@@ -126,7 +126,7 @@ class LibraryBrowseViewModel(
 		}
 	}
 
-	fun initialize(folderJson: String, serverId: UUID?, userId: UUID?) {
+	fun initialize(folderJson: String, serverId: UUID?, userId: UUID?, includeType: String? = null) {
 		if (isInitialized) return
 		isInitialized = true
 
@@ -135,6 +135,7 @@ class LibraryBrowseViewModel(
 		)
 		this.folder = folder
 		this.serverId = serverId
+		this.includeType = includeType
 
 		resolveApiClient(serverId, userId)
 
@@ -173,7 +174,8 @@ class LibraryBrowseViewModel(
 			}
 
 			val savedPosterSize = libraryPreferences?.get(LibraryPreferences.posterSize) ?: PosterSize.MED
-			val savedImageType = libraryPreferences?.get(LibraryPreferences.imageType) ?: ImageType.POSTER
+			val savedImageType = if (folder.collectionType == CollectionType.MUSIC) ImageType.SQUARE
+				else libraryPreferences?.get(LibraryPreferences.imageType) ?: ImageType.POSTER
 			val savedGridDirection = libraryPreferences?.get(LibraryPreferences.gridDirection) ?: GridDirection.VERTICAL
 
 			_uiState.value = _uiState.value.copy(
@@ -377,8 +379,13 @@ class LibraryBrowseViewModel(
 						else -> setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES)
 					}
 					excludeTypes = null
+				} else if (includeType in setOf("AlbumArtist", "Artist")) {
+					parentId = folder!!.id
+					genres = null
+					includeTypes = null
+					excludeTypes = null
+					recursive = false
 				} else {
-					// Library mode
 					parentId = folder!!.id
 					genres = null
 
@@ -397,8 +404,6 @@ class LibraryBrowseViewModel(
 						else -> null
 					}
 
-					// Only recurse when we have an includeItemTypes filter to
-					// avoid returning every nested item in mixed collections
 					recursive = isLibraryRoot && includeTypes != null
 
 					excludeTypes = when {
@@ -414,24 +419,52 @@ class LibraryBrowseViewModel(
 					else -> null
 				}
 
-				val response = withContext(Dispatchers.IO) {
-					effectiveApi.itemsApi.getItems(
-						parentId = parentId,
-						genres = genres,
-						includeItemTypes = includeTypes,
-						excludeItemTypes = excludeTypes,
-						collapseBoxSetItems = false,
-						recursive = recursive,
-						fields = ItemRepository.itemFields,
-						sortBy = setOf(state.currentSortOption.sortBy),
-						sortOrder = setOf(state.currentSortOption.sortOrder),
-						filters = filters,
-						seriesStatus = seriesStatus,
-						startIndex = currentPage * pageSize,
-						limit = pageSize,
-						enableTotalRecordCount = true,
-						nameStartsWith = state.startLetter,
-					).content
+				val response = when (includeType) {
+					"AlbumArtist" -> withContext(Dispatchers.IO) {
+						effectiveApi.artistsApi.getAlbumArtists(
+							parentId = parentId,
+							fields = ItemRepository.itemFields,
+							sortBy = setOf(state.currentSortOption.sortBy),
+							sortOrder = setOf(state.currentSortOption.sortOrder),
+							filters = filters,
+							startIndex = currentPage * pageSize,
+							limit = pageSize,
+							enableTotalRecordCount = true,
+							nameStartsWith = state.startLetter,
+						).content
+					}
+					"Artist" -> withContext(Dispatchers.IO) {
+						effectiveApi.artistsApi.getArtists(
+							parentId = parentId,
+							fields = ItemRepository.itemFields,
+							sortBy = setOf(state.currentSortOption.sortBy),
+							sortOrder = setOf(state.currentSortOption.sortOrder),
+							filters = filters,
+							startIndex = currentPage * pageSize,
+							limit = pageSize,
+							enableTotalRecordCount = true,
+							nameStartsWith = state.startLetter,
+						).content
+					}
+					else -> withContext(Dispatchers.IO) {
+						effectiveApi.itemsApi.getItems(
+							parentId = parentId,
+							genres = genres,
+							includeItemTypes = includeTypes,
+							excludeItemTypes = excludeTypes,
+							collapseBoxSetItems = false,
+							recursive = recursive,
+							fields = ItemRepository.itemFields,
+							sortBy = setOf(state.currentSortOption.sortBy),
+							sortOrder = setOf(state.currentSortOption.sortOrder),
+							filters = filters,
+							seriesStatus = seriesStatus,
+							startIndex = currentPage * pageSize,
+							limit = pageSize,
+							enableTotalRecordCount = true,
+							nameStartsWith = state.startLetter,
+						).content
+					}
 				}
 
 				val totalItems = response.totalRecordCount ?: 0

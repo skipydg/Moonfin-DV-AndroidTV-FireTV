@@ -3,7 +3,6 @@ package org.jellyfin.androidtv.ui.navigation
 import kotlinx.serialization.json.Json
 import org.jellyfin.androidtv.constant.Extras
 import org.jellyfin.androidtv.ui.browsing.v2.FavoritesBrowseFragment
-import org.jellyfin.androidtv.ui.browsing.BrowseGridFragment
 import org.jellyfin.androidtv.ui.browsing.ByLetterFragment
 import org.jellyfin.androidtv.ui.browsing.CollectionFragment
 import org.jellyfin.androidtv.ui.browsing.FolderViewFragment
@@ -63,7 +62,7 @@ object Destinations {
 	// TODO only pass item id instead of complete JSON to browsing destinations
 	@JvmName("libraryBrowserWithType")
 	fun libraryBrowser(item: BaseItemDto, includeType: String) =
-		fragmentDestination<BrowseGridFragment>(
+		fragmentDestination<LibraryBrowseFragment>(
 			Extras.Folder to Json.Default.encodeToString(item),
 			Extras.IncludeType to includeType,
 		)

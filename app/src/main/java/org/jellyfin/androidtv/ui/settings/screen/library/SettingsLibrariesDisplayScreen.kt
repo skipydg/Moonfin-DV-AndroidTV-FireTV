@@ -76,7 +76,7 @@ fun SettingsLibrariesDisplayScreen(
 
 		val showImageType = userView?.collectionType in setOf(
 			CollectionType.MOVIES, CollectionType.TVSHOWS,
-			CollectionType.MUSIC, CollectionType.LIVETV,
+			CollectionType.LIVETV,
 		)
 
 		if (showImageType) {

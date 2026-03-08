@@ -125,7 +125,8 @@ class LibraryBrowseFragment : Fragment() {
 			val folderJson = arguments?.getString(Extras.Folder) ?: return
 			val serverId = Utils.uuidOrNull(arguments?.getString("ServerId"))
 			val userId = Utils.uuidOrNull(arguments?.getString("UserId"))
-			viewModel.initialize(folderJson, serverId, userId)
+			val includeType = arguments?.getString(Extras.IncludeType)
+			viewModel.initialize(folderJson, serverId, userId, includeType)
 		}
 	}
 
