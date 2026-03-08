@@ -2,7 +2,9 @@ package org.jellyfin.androidtv.ui.itemdetail.v2
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,17 +14,17 @@ import org.jellyfin.androidtv.data.repository.ItemRepository
 import org.jellyfin.androidtv.util.Utils
 import org.jellyfin.androidtv.util.sdk.ApiClientFactory
 import org.jellyfin.sdk.api.client.ApiClient
-import org.jellyfin.sdk.api.client.exception.ApiClientException
-import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
+import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.playStateApi
 import org.jellyfin.sdk.api.client.extensions.playlistsApi
 import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
-import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.BaseItemPerson
+import org.jellyfin.sdk.model.api.ItemFields
+import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.MediaStreamType
 import org.jellyfin.sdk.model.api.PersonKind
 import org.jellyfin.sdk.model.api.VideoRangeType
@@ -109,9 +111,39 @@ class ItemDetailsViewModel(
 				)
 
 				loadAdditionalData(item)
-			} catch (err: ApiClientException) {
-				Timber.e(err, "Failed to load item $itemId")
-				_uiState.value = ItemDetailsUiState(isLoading = false)
+			} catch (err: Exception) {
+				coroutineContext.ensureActive()
+				Timber.e(err, "Failed to load item $itemId, trying fallback")
+				try {
+					val result = withContext(Dispatchers.IO) {
+						effectiveApi.itemsApi.getItems(
+							ids = setOf(itemId),
+							fields = setOf(
+								ItemFields.PRIMARY_IMAGE_ASPECT_RATIO,
+								ItemFields.OVERVIEW,
+								ItemFields.CHILD_COUNT,
+								ItemFields.DISPLAY_PREFERENCES_ID,
+								ItemFields.GENRES,
+							),
+						).content
+					}
+					val fallbackItem = result.items.firstOrNull()
+					if (fallbackItem != null) {
+						val badges = getMediaBadges(fallbackItem)
+						_uiState.value = ItemDetailsUiState(
+							isLoading = false,
+							item = fallbackItem,
+							badges = badges,
+						)
+						loadAdditionalData(fallbackItem)
+					} else {
+						_uiState.value = ItemDetailsUiState(isLoading = false)
+					}
+				} catch (fallbackErr: Exception) {
+					coroutineContext.ensureActive()
+					Timber.e(fallbackErr, "Fallback load also failed for item $itemId")
+					_uiState.value = ItemDetailsUiState(isLoading = false)
+				}
 			}
 		}
 	}
@@ -174,7 +206,8 @@ class ItemDetailsViewModel(
 				).content
 			}
 			_uiState.value = _uiState.value.copy(seasons = seasons.items)
-		} catch (err: ApiClientException) {
+		} catch (err: Exception) {
+			coroutineContext.ensureActive()
 			Timber.w(err, "Failed to load seasons")
 		}
 	}
@@ -189,7 +222,8 @@ class ItemDetailsViewModel(
 				).content
 			}
 			_uiState.value = _uiState.value.copy(episodes = episodes.items)
-		} catch (err: ApiClientException) {
+		} catch (err: Exception) {
+			coroutineContext.ensureActive()
 			Timber.w(err, "Failed to load episodes")
 		}
 	}
@@ -204,7 +238,8 @@ class ItemDetailsViewModel(
 				).content
 			}
 			_uiState.value = _uiState.value.copy(nextUp = nextUp.items)
-		} catch (err: ApiClientException) {
+		} catch (err: Exception) {
+			coroutineContext.ensureActive()
 			Timber.w(err, "Failed to load next up")
 		}
 	}
@@ -219,7 +254,8 @@ class ItemDetailsViewModel(
 				).content
 			}
 			_uiState.value = _uiState.value.copy(similar = similar.items)
-		} catch (err: ApiClientException) {
+		} catch (err: Exception) {
+			coroutineContext.ensureActive()
 			Timber.w(err, "Failed to load similar items")
 		}
 	}
@@ -237,7 +273,8 @@ class ItemDetailsViewModel(
 				).content
 			}
 			_uiState.value = _uiState.value.copy(albums = albums.items)
-		} catch (err: ApiClientException) {
+		} catch (err: Exception) {
+			coroutineContext.ensureActive()
 			Timber.w(err, "Failed to load artist albums")
 		}
 	}
@@ -252,7 +289,8 @@ class ItemDetailsViewModel(
 				).content
 			}
 			_uiState.value = _uiState.value.copy(collectionItems = collectionItems.items)
-		} catch (err: ApiClientException) {
+		} catch (err: Exception) {
+			coroutineContext.ensureActive()
 			Timber.w(err, "Failed to load collection items")
 		}
 	}
@@ -270,7 +308,8 @@ class ItemDetailsViewModel(
 				).content
 			}
 			_uiState.value = _uiState.value.copy(similar = filmography.items)
-		} catch (err: ApiClientException) {
+		} catch (err: Exception) {
+			coroutineContext.ensureActive()
 			Timber.w(err, "Failed to load filmography")
 		}
 	}
@@ -285,7 +324,8 @@ class ItemDetailsViewModel(
 				).content
 			}
 			_uiState.value = _uiState.value.copy(tracks = tracks.items)
-		} catch (err: ApiClientException) {
+		} catch (err: Exception) {
+			coroutineContext.ensureActive()
 			Timber.w(err, "Failed to load tracks")
 		}
 	}
@@ -299,7 +339,8 @@ class ItemDetailsViewModel(
 				).content
 			}
 			_uiState.value = _uiState.value.copy(tracks = items.items)
-		} catch (err: ApiClientException) {
+		} catch (err: Exception) {
+			coroutineContext.ensureActive()
 			Timber.w(err, "Failed to load playlist items")
 		}
 	}

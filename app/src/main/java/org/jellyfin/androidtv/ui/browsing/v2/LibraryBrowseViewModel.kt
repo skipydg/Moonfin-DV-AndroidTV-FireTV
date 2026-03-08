@@ -3,7 +3,9 @@ package org.jellyfin.androidtv.ui.browsing.v2
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,7 +22,6 @@ import org.jellyfin.androidtv.preference.PreferencesRepository
 import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.util.sdk.ApiClientFactory
 import org.jellyfin.sdk.api.client.ApiClient
-import org.jellyfin.sdk.api.client.exception.ApiClientException
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -450,7 +451,8 @@ class LibraryBrowseViewModel(
 					hasMoreItems = allItems.size < totalItems,
 					focusedItem = if (reset) allItems.firstOrNull() else _uiState.value.focusedItem,
 				)
-			} catch (err: ApiClientException) {
+			} catch (err: Exception) {
+				coroutineContext.ensureActive()
 				Timber.e(err, "Failed to load library items")
 				_uiState.value = _uiState.value.copy(isLoading = false)
 			} finally {

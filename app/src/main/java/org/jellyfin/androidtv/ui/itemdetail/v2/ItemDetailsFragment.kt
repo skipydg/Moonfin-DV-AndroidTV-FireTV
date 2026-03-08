@@ -1311,7 +1311,9 @@ class ItemDetailsFragment : Fragment() {
 		}
 		val studios = item.studios ?: emptyList()
 		if (studios.isNotEmpty()) {
-			metaItems.add("Studio" to studios.joinToString(", ") { it.name ?: "" })
+			val studioText = studios.take(5).joinToString(", ") { it.name ?: "" } +
+				if (studios.size > 5) " +${studios.size - 5} more" else ""
+			metaItems.add("Studio" to studioText)
 		}
 
 		if (metaItems.isNotEmpty()) {
