@@ -67,6 +67,7 @@ import org.jellyfin.androidtv.util.Utils
 import org.jellyfin.androidtv.util.apiclient.getUrl
 import org.jellyfin.androidtv.util.apiclient.itemImages
 import org.jellyfin.sdk.model.api.BaseItemDto
+import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CollectionType
 import org.jellyfin.sdk.model.api.ImageType as JellyfinImageType
 import org.jellyfin.sdk.model.api.ItemSortBy
@@ -406,7 +407,11 @@ class LibraryBrowseFragment : Fragment() {
 		var focusTargetIndex by remember { mutableStateOf(if (viewModel.hasRestoredScroll) viewModel.savedFocusedIndex else 0) }
 		val focusRequester = remember { FocusRequester() }
 
-		val (cardWidth, cardHeight) = imageTypeToCardDimensions(uiState.posterSize, uiState.imageType)
+		val (cardWidth, cardHeight) = if (uiState.useAutoImageType) {
+			imageTypeToCardDimensions(uiState.posterSize, ImageType.THUMB)
+		} else {
+			imageTypeToCardDimensions(uiState.posterSize, uiState.imageType)
+		}
 
 		val columns = GridCells.Adaptive(minSize = (cardWidth + 16).dp)
 
@@ -448,22 +453,51 @@ class LibraryBrowseFragment : Fragment() {
 			verticalArrangement = Arrangement.spacedBy(16.dp),
 		) {
 			itemsIndexed(uiState.items) { index, item ->
-				LibraryPosterCard(
-					item = item,
-					modifier = if (index == focusTargetIndex) Modifier.focusRequester(focusRequester) else Modifier,
-					imageUrl = getItemImageUrl(item, uiState.imageType),
-					cardWidth = cardWidth,
-					cardHeight = cardHeight,
-					onClick = { launchItem(item) },
-					onFocused = {
-						focusTargetIndex = index
-						viewModel.savedFocusedIndex = index
-						viewModel.setFocusedItem(item)
-						backgroundService.setBackground(item, BlurContext.BROWSING)
-					},
-					showLabels = uiState.isGenreMode,
-					showBadge = uiState.isGenreMode,
-				)
+				val itemModifier = if (index == focusTargetIndex) Modifier.focusRequester(focusRequester) else Modifier
+				val onItemFocused: () -> Unit = {
+					focusTargetIndex = index
+					viewModel.savedFocusedIndex = index
+					viewModel.setFocusedItem(item)
+					backgroundService.setBackground(item, BlurContext.BROWSING)
+				}
+
+				if (item.type == BaseItemKind.FOLDER || item.type == BaseItemKind.PHOTO_ALBUM) {
+					val folderHeight = (cardWidth * 9) / 16
+					LibraryFolderCard(
+						item = item,
+						imageUrl = getItemImageUrl(item, ImageType.THUMB),
+						cardWidth = cardWidth,
+						cardHeight = folderHeight,
+						onClick = { launchItem(item) },
+						onFocused = onItemFocused,
+						modifier = itemModifier,
+					)
+				} else if (uiState.useAutoImageType) {
+					val itemHeight = autoCardHeight(cardWidth, item.primaryImageAspectRatio)
+					LibraryPosterCard(
+						item = item,
+						modifier = itemModifier,
+						imageUrl = getItemImageUrl(item, ImageType.POSTER),
+						cardWidth = cardWidth,
+						cardHeight = itemHeight,
+						onClick = { launchItem(item) },
+						onFocused = onItemFocused,
+						showLabels = uiState.isGenreMode,
+						showBadge = uiState.isGenreMode,
+					)
+				} else {
+					LibraryPosterCard(
+						item = item,
+						modifier = itemModifier,
+						imageUrl = getItemImageUrl(item, uiState.imageType),
+						cardWidth = cardWidth,
+						cardHeight = cardHeight,
+						onClick = { launchItem(item) },
+						onFocused = onItemFocused,
+						showLabels = uiState.isGenreMode,
+						showBadge = uiState.isGenreMode,
+					)
+				}
 			}
 		}
 	}
@@ -479,7 +513,6 @@ class LibraryBrowseFragment : Fragment() {
 			ImageType.BANNER -> JellyfinImageType.BANNER
 			ImageType.SQUARE -> JellyfinImageType.PRIMARY
 		}
-		// Try the preferred image type, fall back to PRIMARY
 		val image = item.itemImages[jellyfinType] ?: item.itemImages[JellyfinImageType.PRIMARY]
 		return image?.getUrl(viewModel.effectiveApi, maxHeight = 400)
 	}
@@ -489,9 +522,6 @@ class LibraryBrowseFragment : Fragment() {
 		itemLauncher.launch(rowItem, null, requireContext())
 	}
 
-	/**
-	 * Maps a [PosterSize] + [ImageType] to (width, height) in dp for the poster cards.
-	 */
 	private fun imageTypeToCardDimensions(posterSize: PosterSize, imageType: ImageType): Pair<Int, Int> {
 		return when (imageType) {
 			ImageType.POSTER -> when (posterSize) {
@@ -522,6 +552,15 @@ class LibraryBrowseFragment : Fragment() {
 				PosterSize.LARGE -> 180 to 180
 				PosterSize.X_LARGE -> 220 to 220
 			}
+		}
+	}
+
+	private fun autoCardHeight(cardWidth: Int, primaryImageAspectRatio: Double?): Int {
+		val ratio = primaryImageAspectRatio?.toFloat()?.coerceIn(0.3f, 3.0f)
+		return if (ratio != null) {
+			(cardWidth / ratio).toInt()
+		} else {
+			(cardWidth * 3) / 2
 		}
 	}
 

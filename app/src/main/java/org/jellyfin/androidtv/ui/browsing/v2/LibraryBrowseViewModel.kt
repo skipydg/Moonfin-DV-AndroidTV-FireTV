@@ -66,6 +66,7 @@ data class LibraryBrowseUiState(
 	val posterSize: PosterSize = PosterSize.MED,
 	val imageType: ImageType = ImageType.POSTER,
 	val gridDirection: GridDirection = GridDirection.VERTICAL,
+	val useAutoImageType: Boolean = false,
 	val isGenreMode: Boolean = false,
 	val genreName: String? = null,
 	val displayPreferencesId: String? = null,
@@ -137,11 +138,15 @@ class LibraryBrowseViewModel(
 
 		resolveApiClient(serverId, userId)
 
-		// Set initial loading state immediately
+		val autoImage = folder.collectionType !in setOf(
+			CollectionType.MOVIES, CollectionType.TVSHOWS,
+			CollectionType.MUSIC, CollectionType.LIVETV,
+		)
 		_uiState.value = LibraryBrowseUiState(
 			isLoading = true,
 			libraryName = folder.name ?: "",
 			collectionType = folder.collectionType,
+			useAutoImageType = autoImage,
 		)
 
 		viewModelScope.launch {

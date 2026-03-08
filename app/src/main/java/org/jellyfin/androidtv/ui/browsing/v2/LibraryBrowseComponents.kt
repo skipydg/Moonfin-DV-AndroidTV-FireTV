@@ -281,6 +281,99 @@ fun LibraryPosterCard(
 	}
 }
 
+@Composable
+fun LibraryFolderCard(
+	item: BaseItemDto,
+	imageUrl: String?,
+	cardWidth: Int,
+	cardHeight: Int,
+	onClick: () -> Unit,
+	onFocused: () -> Unit,
+	modifier: Modifier = Modifier,
+) {
+	val interactionSource = remember { MutableInteractionSource() }
+	val isFocused by interactionSource.collectIsFocusedAsState()
+
+	LaunchedEffect(isFocused) {
+		if (isFocused) onFocused()
+	}
+
+	val scale = if (isFocused) 1.08f else 1.0f
+	val borderColor = focusBorderColor()
+
+	Column(
+		modifier = modifier
+			.width(cardWidth.dp)
+			.graphicsLayer {
+				scaleX = scale
+				scaleY = scale
+			}
+			.clickable(
+				interactionSource = interactionSource,
+				indication = null,
+				onClick = onClick,
+			),
+		horizontalAlignment = Alignment.Start,
+	) {
+		Box(
+			modifier = Modifier
+				.size(width = cardWidth.dp, height = cardHeight.dp)
+				.clip(RoundedCornerShape(4.dp))
+				.then(
+					if (isFocused) Modifier.border(2.dp, borderColor, RoundedCornerShape(4.dp))
+					else Modifier
+				)
+				.background(Color.White.copy(alpha = 0.08f)),
+			contentAlignment = Alignment.Center,
+		) {
+			if (imageUrl != null) {
+				AsyncImage(
+					model = imageUrl,
+					contentDescription = item.name,
+					modifier = Modifier.fillMaxSize(),
+					contentScale = ContentScale.Crop,
+				)
+			}
+
+			Box(
+				modifier = Modifier
+					.size(48.dp)
+					.background(Color.Black.copy(alpha = 0.5f), CircleShape),
+				contentAlignment = Alignment.Center,
+			) {
+				Icon(
+					imageVector = ImageVector.vectorResource(R.drawable.ic_folder),
+					contentDescription = null,
+					tint = Color.White.copy(alpha = 0.9f),
+					modifier = Modifier.size(28.dp),
+				)
+			}
+		}
+
+		Spacer(modifier = Modifier.height(5.dp))
+
+		Text(
+			text = item.name ?: "",
+			fontSize = 13.sp,
+			fontWeight = FontWeight.Medium,
+			color = Color.White,
+			maxLines = 1,
+			overflow = TextOverflow.Ellipsis,
+		)
+
+		val childCount = item.childCount
+		if (childCount != null && childCount > 0) {
+			Text(
+				text = "$childCount items",
+				fontSize = 11.sp,
+				fontWeight = FontWeight.Normal,
+				color = Color.White.copy(alpha = 0.5f),
+				maxLines = 1,
+			)
+		}
+	}
+}
+
 /**
  * A compact icon button for the library toolbar.
  * Turns solid white with a black icon when focused.

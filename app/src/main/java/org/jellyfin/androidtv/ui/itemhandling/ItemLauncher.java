@@ -103,9 +103,6 @@ public class ItemLauncher {
                     case COLLECTION_FOLDER:
                         launchUserView(baseItem);
                         return;
-                    case FOLDER:
-                        navigationRepository.getValue().navigate(Destinations.INSTANCE.folderBrowser(baseItem, serverId));
-                        return;
                     case SERIES:
                     case MUSIC_ARTIST:
                     case MUSIC_ALBUM:

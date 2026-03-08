@@ -31,6 +31,7 @@ import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.userApi
 import org.jellyfin.sdk.model.DeviceInfo
 import org.jellyfin.sdk.model.api.UserConfiguration
+import org.jellyfin.sdk.model.api.CollectionType
 import org.koin.compose.koinInject
 import java.util.UUID
 
@@ -73,24 +74,31 @@ fun SettingsLibrariesDisplayScreen(
 			)
 		}
 
-		item {
-			var imageType by rememberPreference(prefs, LibraryPreferences.imageType)
+		val showImageType = userView?.collectionType in setOf(
+			CollectionType.MOVIES, CollectionType.TVSHOWS,
+			CollectionType.MUSIC, CollectionType.LIVETV,
+		)
 
-			ListButton(
-				headingContent = { Text(stringResource(R.string.lbl_image_type)) },
-				captionContent = { Text(stringResource(imageType.nameRes)) },
-				onClick = {
-					router.push(
-						Routes.LIBRARIES_DISPLAY_IMAGE_TYPE,
-						mapOf(
-							"itemId" to itemId.toString(),
-							"displayPreferencesId" to displayPreferencesId,
-							"serverId" to serverId.toString(),
-							"userId" to userId.toString()
+		if (showImageType) {
+			item {
+				var imageType by rememberPreference(prefs, LibraryPreferences.imageType)
+
+				ListButton(
+					headingContent = { Text(stringResource(R.string.lbl_image_type)) },
+					captionContent = { Text(stringResource(imageType.nameRes)) },
+					onClick = {
+						router.push(
+							Routes.LIBRARIES_DISPLAY_IMAGE_TYPE,
+							mapOf(
+								"itemId" to itemId.toString(),
+								"displayPreferencesId" to displayPreferencesId,
+								"serverId" to serverId.toString(),
+								"userId" to userId.toString()
+							)
 						)
-					)
-				}
-			)
+					}
+				)
+			}
 		}
 
 		item {
