@@ -81,6 +81,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.data.model.DataRefreshService
+import org.jellyfin.androidtv.data.repository.ItemRepository
 import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.preference.UserSettingPreferences
 import org.jellyfin.androidtv.preference.constant.NavbarPosition
@@ -117,6 +118,7 @@ import org.jellyfin.androidtv.util.sdk.compat.canResume
 import org.jellyfin.sdk.api.client.exception.ApiClientException
 import org.jellyfin.sdk.api.client.extensions.imageApi
 import org.jellyfin.sdk.api.client.extensions.libraryApi
+import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -1974,7 +1976,7 @@ class ItemDetailsFragment : Fragment() {
 				if (uiState.nextUp.isNotEmpty()) {
 					play(uiState.nextUp.first(), 0, false)
 				} else {
-					play(item, 0, false)
+					playFirstEpisodeOfSeries(item)
 				}
 			}
 			BaseItemKind.SEASON -> {
@@ -1999,6 +2001,29 @@ class ItemDetailsFragment : Fragment() {
 
 	private fun handleShuffle(item: BaseItemDto) {
 		play(item, 0, true)
+	}
+
+	private fun playFirstEpisodeOfSeries(series: BaseItemDto) {
+		lifecycleScope.launch {
+			try {
+				val episodes = withContext(Dispatchers.IO) {
+					viewModel.effectiveApi.tvShowsApi.getEpisodes(
+						seriesId = series.id,
+						isMissing = false,
+						limit = 1,
+						fields = ItemRepository.itemFields,
+					).content
+				}
+				val firstEpisode = episodes.items.firstOrNull()
+				if (firstEpisode != null) {
+					play(firstEpisode, 0, false)
+				} else {
+					Timber.w("No episodes found for series ${series.id}")
+				}
+			} catch (e: ApiClientException) {
+				Timber.e(e, "Failed to get first episode for series ${series.id}")
+			}
+		}
 	}
 
 	private fun playTrailers(item: BaseItemDto) {
