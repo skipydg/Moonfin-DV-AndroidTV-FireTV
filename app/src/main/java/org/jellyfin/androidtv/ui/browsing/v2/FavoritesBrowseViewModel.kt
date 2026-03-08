@@ -8,7 +8,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jellyfin.androidtv.constant.PosterSize
 import org.jellyfin.androidtv.data.repository.ItemRepository
+import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.ApiClientException
 import org.jellyfin.sdk.api.client.extensions.itemsApi
@@ -21,6 +23,7 @@ import timber.log.Timber
 
 data class FavoritesBrowseUiState(
 	val isLoading: Boolean = true,
+	val posterSize: PosterSize = PosterSize.MED,
 	val cast: List<BaseItemDto> = emptyList(),
 	val movies: List<BaseItemDto> = emptyList(),
 	val shows: List<BaseItemDto> = emptyList(),
@@ -31,14 +34,21 @@ data class FavoritesBrowseUiState(
 
 class FavoritesBrowseViewModel(
 	private val api: ApiClient,
+	private val userPreferences: UserPreferences,
 ) : ViewModel() {
 
 	private val _uiState = MutableStateFlow(FavoritesBrowseUiState())
 	val uiState: StateFlow<FavoritesBrowseUiState> = _uiState.asStateFlow()
 
 	fun initialize() {
-		_uiState.value = FavoritesBrowseUiState(isLoading = true)
+		val savedSize = userPreferences[UserPreferences.favoritesPosterSize]
+		_uiState.value = FavoritesBrowseUiState(isLoading = true, posterSize = savedSize)
 		loadAllRows()
+	}
+
+	fun setPosterSize(size: PosterSize) {
+		userPreferences[UserPreferences.favoritesPosterSize] = size
+		_uiState.value = _uiState.value.copy(posterSize = size)
 	}
 
 	fun setFocusedItem(item: BaseItemDto) {

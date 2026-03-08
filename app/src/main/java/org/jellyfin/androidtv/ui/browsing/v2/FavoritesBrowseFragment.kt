@@ -30,7 +30,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,16 +48,22 @@ import androidx.compose.ui.unit.sp
 import androidx.fragment.app.Fragment
 import coil3.compose.AsyncImage
 import org.jellyfin.androidtv.R
+import org.jellyfin.androidtv.constant.PosterSize
 import org.jellyfin.androidtv.data.service.BackgroundService
 import org.jellyfin.androidtv.data.service.BlurContext
 import org.jellyfin.androidtv.ui.background.AppBackground
 import org.jellyfin.androidtv.ui.base.CircularProgressIndicator
 import org.jellyfin.androidtv.ui.base.JellyfinTheme
 import org.jellyfin.androidtv.ui.base.Text
+import org.jellyfin.androidtv.ui.base.form.RadioButton
+import org.jellyfin.androidtv.ui.base.list.ListButton
+import org.jellyfin.androidtv.ui.base.list.ListSection
 import org.jellyfin.androidtv.ui.itemhandling.BaseItemDtoBaseRowItem
 import org.jellyfin.androidtv.ui.itemhandling.ItemLauncher
 import org.jellyfin.androidtv.ui.navigation.Destinations
 import org.jellyfin.androidtv.ui.navigation.NavigationRepository
+import org.jellyfin.androidtv.ui.settings.composable.SettingsColumn
+import org.jellyfin.androidtv.ui.settings.composable.SettingsDialog
 import org.jellyfin.androidtv.util.apiclient.getUrl
 import org.jellyfin.androidtv.util.apiclient.itemImages
 import org.jellyfin.androidtv.util.apiclient.parentImages
@@ -106,6 +114,7 @@ class FavoritesBrowseFragment : Fragment() {
 	@Composable
 	private fun FavoritesBrowseContent() {
 		val uiState by viewModel.uiState.collectAsState()
+		var settingsVisible by remember { mutableStateOf(false) }
 
 		Box(modifier = Modifier.fillMaxSize()) {
 			AppBackground()
@@ -119,7 +128,10 @@ class FavoritesBrowseFragment : Fragment() {
 			)
 
 			Column(modifier = Modifier.fillMaxSize()) {
-				FavoritesHeader(uiState = uiState)
+				FavoritesHeader(
+					uiState = uiState,
+					onSettingsClicked = { settingsVisible = true },
+				)
 
 				when {
 					uiState.isLoading -> {
@@ -148,11 +160,21 @@ class FavoritesBrowseFragment : Fragment() {
 					counterText = "",
 				)
 			}
+
+			SettingsDialog(
+				visible = settingsVisible,
+				onDismissRequest = { settingsVisible = false },
+			) {
+				FavoritesSettingsContent(uiState)
+			}
 		}
 	}
 
 	@Composable
-	private fun FavoritesHeader(uiState: FavoritesBrowseUiState) {
+	private fun FavoritesHeader(
+		uiState: FavoritesBrowseUiState,
+		onSettingsClicked: () -> Unit,
+	) {
 		Column(
 			modifier = Modifier
 				.fillMaxWidth()
@@ -188,6 +210,14 @@ class FavoritesBrowseFragment : Fragment() {
 					contentDescription = stringResource(R.string.home),
 					onClick = { navigationRepository.navigate(Destinations.home) },
 				)
+
+				Spacer(modifier = Modifier.width(8.dp))
+
+				LibraryToolbarButton(
+					iconRes = R.drawable.ic_settings,
+					contentDescription = stringResource(R.string.lbl_settings),
+					onClick = onSettingsClicked,
+				)
 			}
 		}
 	}
@@ -198,6 +228,7 @@ class FavoritesBrowseFragment : Fragment() {
 		modifier: Modifier = Modifier,
 	) {
 		val scrollState = rememberScrollState()
+		val scale = posterSizeScale(uiState.posterSize)
 
 		Column(
 			modifier = modifier
@@ -209,8 +240,8 @@ class FavoritesBrowseFragment : Fragment() {
 				FavoriteItemRow(
 					title = stringResource(R.string.lbl_cast),
 					items = uiState.cast,
-					cardWidth = 120,
-					cardHeight = 180,
+					cardWidth = (120 * scale).toInt(),
+					cardHeight = (180 * scale).toInt(),
 				)
 			}
 
@@ -218,8 +249,8 @@ class FavoritesBrowseFragment : Fragment() {
 				FavoriteItemRow(
 					title = stringResource(R.string.lbl_movies),
 					items = uiState.movies,
-					cardWidth = 140,
-					cardHeight = 210,
+					cardWidth = (140 * scale).toInt(),
+					cardHeight = (210 * scale).toInt(),
 				)
 			}
 
@@ -227,8 +258,8 @@ class FavoritesBrowseFragment : Fragment() {
 				FavoriteItemRow(
 					title = stringResource(R.string.lbl_series),
 					items = uiState.shows,
-					cardWidth = 140,
-					cardHeight = 210,
+					cardWidth = (140 * scale).toInt(),
+					cardHeight = (210 * scale).toInt(),
 				)
 			}
 
@@ -236,8 +267,8 @@ class FavoritesBrowseFragment : Fragment() {
 				FavoriteItemRow(
 					title = stringResource(R.string.lbl_episodes),
 					items = uiState.episodes,
-					cardWidth = 200,
-					cardHeight = 112,
+					cardWidth = (200 * scale).toInt(),
+					cardHeight = (112 * scale).toInt(),
 				)
 			}
 
@@ -245,8 +276,8 @@ class FavoritesBrowseFragment : Fragment() {
 				FavoriteItemRow(
 					title = stringResource(R.string.lbl_playlists),
 					items = uiState.playlists,
-					cardWidth = 140,
-					cardHeight = 140,
+					cardWidth = (140 * scale).toInt(),
+					cardHeight = (140 * scale).toInt(),
 				)
 			}
 		}
@@ -412,5 +443,33 @@ class FavoritesBrowseFragment : Fragment() {
 	private fun launchItem(item: BaseItemDto) {
 		val rowItem = BaseItemDtoBaseRowItem(item)
 		itemLauncher.launch(rowItem, null, requireContext())
+	}
+
+	private fun posterSizeScale(posterSize: PosterSize): Float = when (posterSize) {
+		PosterSize.SMALLEST -> 0.71f
+		PosterSize.SMALL -> 0.86f
+		PosterSize.MED -> 1.0f
+		PosterSize.LARGE -> 1.29f
+		PosterSize.X_LARGE -> 1.57f
+	}
+
+	@Composable
+	private fun FavoritesSettingsContent(uiState: FavoritesBrowseUiState) {
+		SettingsColumn {
+			item {
+				ListSection(
+					overlineContent = { Text(stringResource(R.string.lbl_favorites).uppercase()) },
+					headingContent = { Text(stringResource(R.string.lbl_image_size)) },
+				)
+			}
+
+			items(PosterSize.entries) { entry ->
+				ListButton(
+					headingContent = { Text(stringResource(entry.nameRes)) },
+					trailingContent = { RadioButton(checked = uiState.posterSize == entry) },
+					onClick = { viewModel.setPosterSize(entry) },
+				)
+			}
+		}
 	}
 }

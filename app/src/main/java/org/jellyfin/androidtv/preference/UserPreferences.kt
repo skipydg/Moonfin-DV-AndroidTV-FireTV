@@ -70,6 +70,8 @@ class UserPreferences(context: Context) : SharedPreferenceStore(
 		 */
 		var showFavoritesButton = booleanPreference("pref_show_favorites_button", true)
 
+		var favoritesPosterSize = enumPreference("pref_favorites_poster_size", org.jellyfin.androidtv.constant.PosterSize.MED)
+
 		/**
 		 * Show library buttons in toolbar
 		 */
