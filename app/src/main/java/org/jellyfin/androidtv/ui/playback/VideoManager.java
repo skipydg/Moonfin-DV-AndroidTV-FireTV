@@ -134,7 +134,7 @@ public class VideoManager {
         mCustomSubtitleView = new SubtitleView(activity);
         mCustomSubtitleView.setFixedTextSize(TypedValue.COMPLEX_UNIT_DIP, userPreferences.get(UserPreferences.Companion.getSubtitlesTextSize()));
         mCustomSubtitleView.setApplyEmbeddedFontSizes(false);
-        mCustomSubtitleView.setApplyEmbeddedStyles(false);
+        mCustomSubtitleView.setApplyEmbeddedStyles(true);
         mCustomSubtitleView.setBottomPaddingFraction(userPreferences.get(UserPreferences.Companion.getSubtitlesOffsetPosition()));
         mCustomSubtitleView.setStyle(subtitleStyle);
         
