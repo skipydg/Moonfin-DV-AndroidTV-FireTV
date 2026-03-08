@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -29,6 +30,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.first
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -396,17 +399,30 @@ class LibraryBrowseFragment : Fragment() {
 		uiState: LibraryBrowseUiState,
 		modifier: Modifier = Modifier,
 	) {
-		val gridState = rememberLazyGridState()
-		val firstItemFocusRequester = remember { FocusRequester() }
+		val gridState = rememberLazyGridState(
+			initialFirstVisibleItemIndex = viewModel.savedScrollIndex,
+			initialFirstVisibleItemScrollOffset = viewModel.savedScrollOffset,
+		)
+		var focusTargetIndex by remember { mutableStateOf(if (viewModel.hasRestoredScroll) viewModel.savedFocusedIndex else 0) }
+		val focusRequester = remember { FocusRequester() }
 
 		val (cardWidth, cardHeight) = imageTypeToCardDimensions(uiState.posterSize, uiState.imageType)
 
 		val columns = GridCells.Adaptive(minSize = (cardWidth + 16).dp)
 
-		// Auto-focus first item when grid loads
 		LaunchedEffect(uiState.items.isNotEmpty()) {
 			if (uiState.items.isNotEmpty()) {
-				try { firstItemFocusRequester.requestFocus() } catch (_: Exception) {}
+				snapshotFlow { gridState.layoutInfo.visibleItemsInfo.size }
+					.first { it > 0 }
+				try { focusRequester.requestFocus() } catch (_: Exception) {}
+			}
+		}
+
+		DisposableEffect(gridState) {
+			onDispose {
+				viewModel.savedScrollIndex = gridState.firstVisibleItemIndex
+				viewModel.savedScrollOffset = gridState.firstVisibleItemScrollOffset
+				viewModel.hasRestoredScroll = true
 			}
 		}
 
@@ -434,12 +450,14 @@ class LibraryBrowseFragment : Fragment() {
 			itemsIndexed(uiState.items) { index, item ->
 				LibraryPosterCard(
 					item = item,
-					modifier = if (index == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier,
+					modifier = if (index == focusTargetIndex) Modifier.focusRequester(focusRequester) else Modifier,
 					imageUrl = getItemImageUrl(item, uiState.imageType),
 					cardWidth = cardWidth,
 					cardHeight = cardHeight,
 					onClick = { launchItem(item) },
 					onFocused = {
+						focusTargetIndex = index
+						viewModel.savedFocusedIndex = index
 						viewModel.setFocusedItem(item)
 						backgroundService.setBackground(item, BlurContext.BROWSING)
 					},

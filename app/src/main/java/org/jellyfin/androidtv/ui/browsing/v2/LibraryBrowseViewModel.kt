@@ -88,6 +88,12 @@ class LibraryBrowseViewModel(
 	var serverId: UUID? = null
 		private set
 
+	var savedScrollIndex: Int = 0
+	var savedScrollOffset: Int = 0
+	var savedFocusedIndex: Int = 0
+	var hasRestoredScroll: Boolean = false
+	private var isInitialized: Boolean = false
+
 	private var folder: BaseItemDto? = null
 	private var libraryPreferences: LibraryPreferences? = null
 	private var currentPage = 0
@@ -119,6 +125,9 @@ class LibraryBrowseViewModel(
 	}
 
 	fun initialize(folderJson: String, serverId: UUID?, userId: UUID?) {
+		if (isInitialized) return
+		isInitialized = true
+
 		val folder = kotlinx.serialization.json.Json.decodeFromString(
 			BaseItemDto.serializer(), folderJson
 		)
@@ -187,6 +196,9 @@ class LibraryBrowseViewModel(
 		displayPreferencesId: String? = null,
 		parentItemId: UUID? = null,
 	) {
+		if (isInitialized) return
+		isInitialized = true
+
 		this.genreFilter = genreName
 		this.genreParentId = parentId
 		this.includeType = includeType
@@ -321,6 +333,10 @@ class LibraryBrowseViewModel(
 		viewModelScope.launch {
 			if (reset) {
 				currentPage = 0
+				savedScrollIndex = 0
+				savedScrollOffset = 0
+				savedFocusedIndex = 0
+				hasRestoredScroll = false
 				_uiState.value = _uiState.value.copy(isLoading = true, items = emptyList(), focusedItem = null)
 			}
 			isLoadingMore = true
