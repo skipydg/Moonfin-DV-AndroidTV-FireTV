@@ -116,6 +116,7 @@ import org.jellyfin.androidtv.util.sdk.TrailerUtils.getExternalTrailerIntent
 import org.jellyfin.androidtv.util.sdk.TrailerUtils.hasPlayableTrailers
 import org.jellyfin.androidtv.util.sdk.compat.canResume
 import org.jellyfin.sdk.api.client.exception.ApiClientException
+import org.jellyfin.sdk.model.serializer.toUUID
 import org.jellyfin.sdk.api.client.extensions.imageApi
 import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.tvShowsApi
@@ -1271,8 +1272,7 @@ class ItemDetailsFragment : Fragment() {
 					val selectedSource = versions[which]
 					val sourceId = selectedSource.id
 					if (sourceId != null) {
-						val sourceUUID = UUID.fromString(sourceId)
-						viewModel.loadItem(sourceUUID)
+						viewModel.loadItem(sourceId.toUUID())
 					}
 					showVersionDialog = false
 				},
