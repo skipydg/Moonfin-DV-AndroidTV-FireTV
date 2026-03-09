@@ -748,14 +748,22 @@ public class PlaybackController implements PlaybackControllerNotifiable {
             internalOptions.setSubtitleStreamIndex(forcedSubtitleIndex);
         }
         
-        if (preSelectedAudio != null || preSelectedSubtitle != null) {
+        String preSelectedMediaSource = trackSelector.getValue().getSelectedMediaSource(itemIdString);
+        if (preSelectedMediaSource != null) {
+            Timber.i("Applying pre-selected media source: %s", preSelectedMediaSource);
+            internalOptions.setMediaSourceId(preSelectedMediaSource);
+        }
+
+        if (preSelectedAudio != null || preSelectedSubtitle != null || preSelectedMediaSource != null) {
             Timber.i("Clearing track pre-selections for next playback");
             trackSelector.getValue().clearSelections();
         }
         
-        MediaSourceInfo currentMediaSource = getCurrentMediaSource();
-        if (!isLiveTv && currentMediaSource != null) {
-            internalOptions.setMediaSourceId(currentMediaSource.getId());
+        if (internalOptions.getMediaSourceId() == null) {
+            MediaSourceInfo currentMediaSource = getCurrentMediaSource();
+            if (!isLiveTv && currentMediaSource != null) {
+                internalOptions.setMediaSourceId(currentMediaSource.getId());
+            }
         }
         DeviceProfile internalProfile = DeviceProfileKt.createDeviceProfile(
                 mFragment.getContext(),

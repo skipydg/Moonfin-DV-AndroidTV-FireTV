@@ -702,7 +702,7 @@ class ItemDetailsFragment : Fragment() {
 							}
 
 							Spacer(modifier = Modifier.height(10.dp))
-							InfoRow(item, isSeries, uiState.badges)
+							InfoRow(item, isSeries, uiState)
 							Spacer(modifier = Modifier.height(6.dp))
 							InfoRowMultipleRatings(item = item)
 							Spacer(modifier = Modifier.height(10.dp))
@@ -955,8 +955,10 @@ class ItemDetailsFragment : Fragment() {
 	private fun InfoRow(
 		item: BaseItemDto,
 		isSeries: Boolean,
-		badges: List<MediaBadge>,
+		uiState: ItemDetailsUiState,
 	) {
+		val badges = uiState.badges
+		val selectedSource = item.mediaSources?.getOrNull(uiState.selectedMediaSourceIndex)
 		Row(
 			verticalAlignment = Alignment.CenterVertically,
 			modifier = Modifier.fillMaxWidth(),
@@ -972,7 +974,8 @@ class ItemDetailsFragment : Fragment() {
 
 					// Runtime + Ends At (movies only)
 					if (!isSeries) {
-						item.runTimeTicks?.let {
+						val runtimeTicks = selectedSource?.runTimeTicks ?: item.runTimeTicks
+						runtimeTicks?.let {
 							add { RuntimeInfo(it) }
 							add { InfoItemText(
 									text = stringResource(
@@ -1979,6 +1982,14 @@ class ItemDetailsFragment : Fragment() {
 		)
 	}
 
+	private fun saveSelectedMediaSource(item: BaseItemDto) {
+		val index = viewModel.uiState.value.selectedMediaSourceIndex
+		val sourceId = item.mediaSources?.getOrNull(index)?.id
+		if (sourceId != null && index > 0) {
+			trackSelector.setSelectedMediaSource(item.id.toString(), sourceId)
+		}
+	}
+
 	private fun handlePlay(item: BaseItemDto, uiState: ItemDetailsUiState) {
 		when (item.type) {
 			BaseItemKind.SERIES -> {
@@ -1996,12 +2007,14 @@ class ItemDetailsFragment : Fragment() {
 				}
 			}
 			else -> {
+				saveSelectedMediaSource(item)
 				play(item, 0, false)
 			}
 		}
 	}
 
 	private fun handleResume(item: BaseItemDto) {
+		saveSelectedMediaSource(item)
 		val prerollMs = (userPreferences[UserPreferences.resumeSubtractDuration].toIntOrNull() ?: 0) * 1000
 		val posMs = ((item.userData?.playbackPositionTicks ?: 0L) / 10_000).toInt()
 		val position = maxOf(posMs - prerollMs, 0)
