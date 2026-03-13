@@ -3,8 +3,6 @@ package org.jellyfin.androidtv.ui.home.mediabar
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
@@ -18,7 +16,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -66,7 +63,6 @@ import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.preference.UserSettingPreferences
 import org.jellyfin.androidtv.preference.constant.NavbarPosition
 import org.jellyfin.androidtv.ui.base.Text
-import org.jellyfin.androidtv.ui.shared.LogoView
 import org.jellyfin.androidtv.util.TimeUtils
 import org.jellyfin.androidtv.util.isImagePrimarilyDark
 import org.jellyfin.androidtv.util.toHtmlSpanned
@@ -187,24 +183,6 @@ fun MediaBarSlideshowView(
 			is MediaBarState.Ready -> {
 				val item = currentState.items.getOrNull(playbackState.currentIndex)
 
-				Crossfade(
-					targetState = item?.logoUrl,
-					animationSpec = tween(300),
-					label = "mediabar_logo_transition",
-					modifier = Modifier
-						.align(Alignment.TopStart)
-						.offset(x = 70.dp, y = (-220).dp)
-						.width(250.dp)
-						.height(100.dp)
-				) { logoUrl ->
-					if (logoUrl != null) {
-						LogoView(
-							url = logoUrl,
-							modifier = Modifier.fillMaxSize()
-						)
-					}
-				}
-
 				// Info overlay at bottom
 				Box(
 					modifier = Modifier
@@ -229,8 +207,7 @@ fun MediaBarSlideshowView(
 						Box(
 							modifier = Modifier
 								.align(Alignment.TopStart)
-								.offset(y = (-70).dp)
-								.padding(start = 5.dp)
+								.padding(top = 5.dp, start = 5.dp)
 								.size(48.dp)
 								.background(overlayColor.copy(alpha = overlayOpacity), CircleShape),
 							contentAlignment = Alignment.Center
@@ -248,8 +225,7 @@ fun MediaBarSlideshowView(
 					Box(
 						modifier = Modifier
 							.align(Alignment.TopEnd)
-							.offset(y = (-70).dp)
-							.padding(end = 16.dp)
+							.padding(top = 5.dp, end = 16.dp)
 							.size(48.dp)
 							.background(overlayColor.copy(alpha = overlayOpacity), CircleShape),
 						contentAlignment = Alignment.Center

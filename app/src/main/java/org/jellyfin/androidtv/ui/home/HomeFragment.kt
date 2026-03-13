@@ -212,17 +212,26 @@ class HomeFragment : Fragment() {
 			val playbackState = mediaBarViewModel.playbackState.value
 			val currentItem = state.items.getOrNull(playbackState.currentIndex)
 			val backdropUrl = currentItem?.backdropUrl
+			val logoUrl = currentItem?.logoUrl
 			
 			if (backdropUrl != null) {
 				backgroundImage?.isVisible = true
 				backgroundImage?.load(backdropUrl) {
-					crossfade(400) // 400ms crossfade - faster and smoother
+					crossfade(400)
 				}
 			} else {
 				backgroundImage?.isVisible = false
 			}
+
+			if (logoUrl != null) {
+				logoView?.isVisible = true
+				logoView?.load(logoUrl) {
+					crossfade(300)
+				}
+			} else {
+				logoView?.isVisible = false
+			}
 			
-			logoView?.isVisible = false
 			titleView?.isVisible = false
 		} else {
 			backgroundImage?.isVisible = false
