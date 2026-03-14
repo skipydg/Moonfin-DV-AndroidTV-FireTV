@@ -9,7 +9,7 @@ import org.moonfin.server.emby.EmbyApiClient
 class EmbySystemApi(private val apiClient: EmbyApiClient) : ServerSystemApi {
 
     override suspend fun getPublicSystemInfo(): PublicSystemInfo {
-        val service = SystemServiceApi(baseUrl = apiClient.baseUrl)
+        val service = SystemServiceApi(apiClient.baseUrl)
         val info = service.getSystemInfoPublic().body()
         return PublicSystemInfo(
             serverName = info.serverName ?: "",
@@ -23,7 +23,7 @@ class EmbySystemApi(private val apiClient: EmbyApiClient) : ServerSystemApi {
     }
 
     override suspend fun getSystemInfo(): SystemInfo {
-        val service = SystemServiceApi(baseUrl = apiClient.baseUrl).also {
+        val service = SystemServiceApi(apiClient.baseUrl).also {
             apiClient.accessToken?.let { token -> it.setApiKey(token) }
         }
         val info = service.getSystemInfo().body()

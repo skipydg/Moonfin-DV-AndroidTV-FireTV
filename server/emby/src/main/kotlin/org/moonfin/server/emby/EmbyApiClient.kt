@@ -86,18 +86,18 @@ class EmbyApiClient(
             mediaInfoService = null
             return
         }
-        userService = UserServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
-        sessionsService = SessionsServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
-        itemsService = ItemsServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
-        userLibraryService = UserLibraryServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
-        tvShowsService = TvShowsServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
-        libraryService = LibraryServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
-        playstateService = PlaystateServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
-        userViewsService = UserViewsServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
-        liveTvService = LiveTvServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
-        instantMixService = InstantMixServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
-        displayPreferencesService = DisplayPreferencesServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
-        mediaInfoService = MediaInfoServiceApi(baseUrl = baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        userService = UserServiceApi(baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        sessionsService = SessionsServiceApi(baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        itemsService = ItemsServiceApi(baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        userLibraryService = UserLibraryServiceApi(baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        tvShowsService = TvShowsServiceApi(baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        libraryService = LibraryServiceApi(baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        playstateService = PlaystateServiceApi(baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        userViewsService = UserViewsServiceApi(baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        liveTvService = LiveTvServiceApi(baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        instantMixService = InstantMixServiceApi(baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        displayPreferencesService = DisplayPreferencesServiceApi(baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
+        mediaInfoService = MediaInfoServiceApi(baseUrl).also { if (accessToken != null) it.setApiKey(accessToken) }
     }
 
     fun reset() = configure("", null, null)
@@ -136,7 +136,7 @@ class EmbyApiClient(
 
     suspend fun authenticateByName(username: String, password: String): EmbyAuthResult {
         val body = AuthenticateUserByName(username = username, pw = password)
-        val result = UserServiceApi(baseUrl = baseUrl).postUsersAuthenticatebyname(buildAuthHeader(), body).body()
+        val result = UserServiceApi(baseUrl).postUsersAuthenticatebyname(buildAuthHeader(), body).body()
         val userDto = result.user
         return EmbyAuthResult(
             accessToken = result.accessToken,

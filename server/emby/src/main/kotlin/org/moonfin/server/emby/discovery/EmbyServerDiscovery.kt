@@ -75,7 +75,7 @@ class EmbyServerDiscovery : ServerDiscoveryApi {
 
     override suspend fun validateServer(address: String): ServerValidationResult {
         return try {
-            val service = SystemServiceApi(baseUrl = address)
+            val service = SystemServiceApi(address)
             val info = service.getSystemInfoPublic().body()
             ServerValidationResult(
                 address = address,

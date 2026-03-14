@@ -24,7 +24,7 @@ class EmbyAuthApi(private val apiClient: EmbyApiClient) : ServerAuthApi {
         apiClient.validateCurrentUser().toServerUser()
 
     override suspend fun getPublicUsers(): List<ServerUser> {
-        val service = org.emby.client.api.UserServiceApi(baseUrl = apiClient.baseUrl)
+        val service = org.emby.client.api.UserServiceApi(apiClient.baseUrl)
         val users = service.getUsersPublic().body()
         return users.map { it.toServerUser() }
     }
