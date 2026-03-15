@@ -2,11 +2,11 @@
 # release.sh — Bump version, build APK, tag, and publish a GitHub release
 set -e
 
-# Make sure we're on main
+# Make sure we're on dv-compat
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
-if [ "$BRANCH" != "main" ]; then
-  echo "❌ You must be on the main branch to release."
-  echo "   Run: git checkout main"
+if [ "$BRANCH" != "dv-compat" ]; then
+  echo "❌ You must be on the dv-compat branch to release."
+  echo "   Run: git checkout dv-compat"
   exit 1
 fi
 
@@ -47,7 +47,7 @@ fi
 
 echo "🏷️  Tagging $TAG..."
 git tag "$TAG"
-git push origin main
+git push origin dv-compat
 git push origin "$TAG"
 
 echo "🚀 Publishing release..."
