@@ -43,3 +43,7 @@ openapitools.json
 # Secrets / service files (uncomment if you keep these locally)
 # /google-services.json
 # /app/google-services.json
+
+# Local workflow scripts
+release.sh
+sync.sh
