@@ -10,7 +10,6 @@ import org.emby.client.model.PlaybackProgressInfo
 import org.emby.client.model.PlaybackStartInfo
 import org.emby.client.model.PlaybackStopInfo
 import org.emby.client.model.QueueItem
-import org.emby.client.model.RepeatMode as EmbyRepeatMode
 import org.jellyfin.playback.core.mediastream.MediaConversionMethod
 import org.jellyfin.playback.core.mediastream.mediaStream
 import org.jellyfin.playback.core.model.PlayState
@@ -47,11 +46,18 @@ class EmbyPlaySessionService(
 			MediaConversionMethod.Transcode -> PlayMethod.TRANSCODE
 		}
 
-	private val CoreRepeatMode.embyMode
+	private val CoreRepeatMode.embyStartMode
 		get() = when (this) {
-			CoreRepeatMode.NONE -> EmbyRepeatMode.REPEAT_NONE
-			CoreRepeatMode.REPEAT_ENTRY_ONCE -> EmbyRepeatMode.REPEAT_ONE
-			CoreRepeatMode.REPEAT_ENTRY_INFINITE -> EmbyRepeatMode.REPEAT_ALL
+			CoreRepeatMode.NONE -> PlaybackStartInfo.RepeatMode.RepeatNone
+			CoreRepeatMode.REPEAT_ENTRY_ONCE -> PlaybackStartInfo.RepeatMode.RepeatOne
+			CoreRepeatMode.REPEAT_ENTRY_INFINITE -> PlaybackStartInfo.RepeatMode.RepeatAll
+		}
+
+	private val CoreRepeatMode.embyProgressMode
+		get() = when (this) {
+			CoreRepeatMode.NONE -> PlaybackProgressInfo.RepeatMode.RepeatNone
+			CoreRepeatMode.REPEAT_ENTRY_ONCE -> PlaybackProgressInfo.RepeatMode.RepeatOne
+			CoreRepeatMode.REPEAT_ENTRY_INFINITE -> PlaybackProgressInfo.RepeatMode.RepeatAll
 		}
 
 	suspend fun sendUpdateIfActive() {
@@ -84,7 +90,7 @@ class EmbyPlaySessionService(
 					aspectRatio = state.videoSize.value.aspectRatio.toString(),
 					positionTicks = withContext(Dispatchers.Main) { state.positionInfo.active.inWholeTicks },
 					playMethod = stream.conversionMethod.embyMethod,
-					repeatMode = state.repeatMode.value.embyMode,
+					repeatMode = state.repeatMode.value.embyStartMode,
 					shuffle = state.playbackOrder.value != PlaybackOrder.DEFAULT,
 					nowPlayingQueue = getQueue(),
 				)
@@ -111,7 +117,7 @@ class EmbyPlaySessionService(
 					aspectRatio = state.videoSize.value.aspectRatio.toString(),
 					positionTicks = withContext(Dispatchers.Main) { state.positionInfo.active.inWholeTicks },
 					playMethod = stream.conversionMethod.embyMethod,
-					repeatMode = state.repeatMode.value.embyMode,
+					repeatMode = state.repeatMode.value.embyProgressMode,
 					shuffle = state.playbackOrder.value != PlaybackOrder.DEFAULT,
 					nowPlayingQueue = getQueue(),
 				)
