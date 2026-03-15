@@ -1,10 +1,11 @@
 package org.moonfin.playback.emby.mediastream
 
 import org.emby.client.api.MediaInfoServiceApi
-import org.emby.client.model.DlnaProfileType
-import org.emby.client.model.LiveStreamRequest
+import org.emby.client.model.DlnaDirectPlayProfile
+import org.emby.client.model.DlnaTranscodingProfile
+import org.emby.client.model.MediaInfoLiveStreamRequest
 import org.emby.client.model.MediaSourceInfo
-import org.emby.client.model.PlaybackInfoRequest
+import org.emby.client.model.MediaInfoPlaybackInfoRequest
 import org.jellyfin.playback.core.mediastream.MediaConversionMethod
 import org.jellyfin.playback.core.mediastream.MediaStreamResolver
 import org.jellyfin.playback.core.mediastream.PlayableMediaStream
@@ -88,7 +89,7 @@ class EmbyMediaStreamResolver(
 
 		val response = service.postItemsByIdPlaybackinfo(
 			id = embyItemId,
-			playbackInfoRequest = PlaybackInfoRequest(
+			mediaInfoPlaybackInfoRequest = MediaInfoPlaybackInfoRequest(
 				userId = api.userId,
 				mediaSourceId = mediaSourceId,
 				deviceProfile = embyProfile,
@@ -134,7 +135,7 @@ class EmbyMediaStreamResolver(
 	): MediaSourceInfo? {
 		val embyProfile = deviceProfileBuilder().toEmbyDeviceProfile()
 		val response = service.postLivestreamsOpen(
-			liveStreamRequest = LiveStreamRequest(
+			mediaInfoLiveStreamRequest = MediaInfoLiveStreamRequest(
 				openToken = openToken,
 				playSessionId = playSessionId,
 				itemId = itemId.toEmbyId().toLongOrNull(),
@@ -167,14 +168,14 @@ class EmbyMediaStreamResolver(
 
 		val audioDirectPlayContainers = embyProfile.directPlayProfiles
 			.orEmpty()
-			.filter { it.type == DlnaProfileType.AUDIO }
+			.filter { it.type == DlnaDirectPlayProfile.Type.Audio }
 			.mapNotNull { it.container }
 			.flatMap { it.split(",") }
 			.distinct()
 
 		val audioTranscodingProfile = embyProfile.transcodingProfiles
 			.orEmpty()
-			.firstOrNull { it.type == DlnaProfileType.AUDIO }
+			.firstOrNull { it.type == DlnaTranscodingProfile.Type.Audio }
 
 		return buildString {
 			append(api.baseUrl.trimEnd('/'))
